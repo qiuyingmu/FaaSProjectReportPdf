@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════════
+#  FaaSProjectReportPdf Docker Compose
+#  用法：docker compose up -d
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ======================== Spring Boot 后端 ========================
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.backend
+    container_name: faasreport-backend
+    restart: unless-stopped
+    environment:
+      # 生产环境 Profile
+      SPRING_PROFILES_ACTIVE: production
+      # 数据库（H2 嵌入式，无需额外数据库容器）
+      # 如果需要 PostgreSQL，取消下方注释并启用 production+postgres profile
+      # DB_URL: jdbc:postgresql://db:5432/report?useSSL=false
+      # DB_USERNAME: report
+      # DB_PASSWORD: ${DB_PASSWORD:-report123}
+      # Session 超时
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-30m}
+      # 管理员密码
+      REPORT_ADMIN_PASSWORD: ${REPORT_ADMIN_PASSWORD}
+      # CORS 允许的前端域名
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://report.jgjl.cn}
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8082:8080"
+    volumes:
+      - ./data:/app/data          # H2 数据库文件持久化
+      - ./logs:/app/logs          # 应用日志
+    networks:
+      - faasreport-net
+
+networks:
+  faasreport-net:
+    name: faasreport-backend
