@@ -1,0 +1,52 @@
+﻿<settings xmlns="http://maven.apache.org/SETTINGS/1.1.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.1.0
+          https://maven.apache.org/xsd/settings-1.1.0.xsd">
+
+  <!-- <localRepository>/path/to/local/repository</localRepository> -->
+
+  <mirrors>
+    <mirror>
+      <id>alimaven</id>
+      <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+    <!-- Add additional mirrors for other repositories if needed -->
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>accelerate-builds</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <!-- Add additional repositories if needed -->
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </pluginRepository>
+        <!-- Add additional plugin repositories if needed -->
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+</settings>

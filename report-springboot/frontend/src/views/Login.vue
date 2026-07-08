@@ -1,0 +1,67 @@
+<template>
+  <div class="login-container">
+    <el-card class="login-card" shadow="always">
+      <template #header>
+        <h2 style="text-align:center; margin:0;">运营报告管理</h2>
+      </template>
+      <p style="text-align:center; color:#909399; margin-bottom:24px; font-size:14px;">请登录以访问后台管理</p>
+      <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" style="margin-bottom:16px;" />
+      <el-form @submit.prevent="login" label-position="top">
+        <el-form-item label="账号">
+          <el-input v-model="username" placeholder="请输入管理员账号" prefix-icon="User" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password />
+        </el-form-item>
+        <el-button type="primary" native-type="submit" style="width:100%;" :loading="loading">登 录</el-button>
+      </el-form>
+    </el-card>
+  </div>
+</template>
+
+<script>
+import { User, Lock } from '@element-plus/icons-vue'
+
+export default {
+  components: { User, Lock },
+  data() {
+    return { username: '', password: '', error: '', loading: false }
+  },
+  methods: {
+    async login() {
+      this.loading = true
+      this.error = ''
+      try {
+        const form = new URLSearchParams()
+        form.append('username', this.username)
+        form.append('password', this.password)
+
+        const res = await fetch('/admin/login', {
+          method: 'POST',
+          credentials: 'include',
+          body: form,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+
+        const data = await res.json()
+        if (data.success) {
+          this.$router.push('/')
+        } else {
+          this.error = data.message || '登录失败'
+        }
+      } catch (e) {
+        this.error = '网络错误，请检查后端是否启动'
+      }
+      this.loading = false
+    }
+  }
+}
+</script>
+
+<style scoped>
+.login-container {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+.login-card { width: 400px; }
+</style>

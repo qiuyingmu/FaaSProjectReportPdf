@@ -1,0 +1,23 @@
+[
+	{
+		"cron":"0 0 10 * * MON",
+		"description":"每周一 10:00 生成上周报告",
+		"displayName":"周报",
+		"enabled":true,
+		"type":"weekly"
+	},
+	{
+		"cron":"0 0 10 1 * ?",
+		"description":"每月 1 日 10:00 生成上月报告",
+		"displayName":"月报",
+		"enabled":true,
+		"type":"monthly"
+	},
+	{
+		"cron":"0 0 10 1 1,4,7,10 ?",
+		"description":"每季度首月 1 日 10:00 生成上季度报告",
+		"displayName":"季报",
+		"enabled":true,
+		"type":"quarterly"
+	}
+]

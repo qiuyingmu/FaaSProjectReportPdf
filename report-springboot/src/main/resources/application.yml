@@ -1,0 +1,103 @@
+server:
+  port: 9001
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+    # Session 超时（15 分钟无操作自动过期）
+    session:
+      timeout: 15m
+
+spring:
+  application:
+    name: report-springboot
+  main:
+    banner-mode: console
+  thymeleaf:
+    cache: false
+  mandatory-file-encoding: UTF-8
+
+  # ========================================
+  #  默认：H2 嵌入式数据库（文件模式）
+  #  零配置、免安装，适合开发和小规模生产
+  # ========================================
+  datasource:
+    url: jdbc:h2:file:./data/report;AUTO_SERVER=TRUE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+# ========================================
+#  管理后台配置
+# ========================================
+report:
+  admin:
+    username: admin
+    password: admin123
+  log:
+    path: logs/report.log
+  enabled: true
+  timeout-seconds: 600
+
+# ========================================
+#  Actuator 监控
+# ========================================
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,env
+
+# ========================================
+#  生产环境（PostgreSQL）
+#  spring.profiles.active=production
+# ========================================
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+  # PostgreSQL 数据库
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/report}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:report}
+    password: ${DB_PASSWORD:report123}
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQL10Dialect
+        jdbc:
+          batch_size: 20
+
+server:
+  servlet:
+    session:
+      timeout: ${SESSION_TIMEOUT:30m}
+
+report:
+  admin:
+    password: ${REPORT_ADMIN_PASSWORD:admin123}
+  enabled: true

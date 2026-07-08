@@ -1,0 +1,30 @@
+target/
+*.class
+*.jar
+*.war
+*.log
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
+test-output/
+yida-secret.properties
+
+# Environment files
+.env
+!.env.example
+
+# H2 database
+*.mv.db
+*.trace.db
+
+# Node modules
+frontend/node_modules/
+frontend/dist/
+frontend/vite.log
+
+# Runtime data
+data/
+logs/

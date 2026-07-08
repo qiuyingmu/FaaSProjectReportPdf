@@ -1,0 +1,622 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<title>平台运营报告</title>
+<style type="text/css">
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  padding: 32px 0;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.report-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-radius: 16px;
+  padding: 32px 36px;
+  color: #fff;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.report-header::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -8%;
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(83,127,231,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.report-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative; z-index: 1;
+}
+.report-title h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.report-type-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  font-size: 11px;
+  padding: 2px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.subtitle {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 4px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #eef2ff;
+}
+.section-title .num {
+  display: inline-flex;
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.section-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.summary-item {
+  text-align: center;
+  padding: 20px;
+  background: #fafbfc;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+}
+.summary-item .label {
+  font-size: 13px;
+  color: #8c8c8c;
+  margin-bottom: 8px;
+}
+.summary-item .value {
+  font-size: 28px;
+  font-weight: 700;
+}
+.summary-item .value.blue { color: #3b82f6; }
+.summary-item .value.green { color: #10b981; }
+.summary-item .value.orange { color: #f59e0b; }
+.summary-count-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+.summary-count-table thead { background: #f8f9fb; }
+.summary-count-table th {
+  padding: 10px 14px;
+  text-align: center;
+  font-weight: 600;
+  color: #595959;
+  font-size: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.summary-count-table td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid #f5f5f5;
+  color: #262626;
+}
+.role-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 400;
+}
+.role-tag.person { background: #ecfdf5; color: #059669; }
+.role-tag.director { background: #fff7ed; color: #d97706; }
+.area-badge {
+  display: inline-block;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.project-block {
+  background: #fafbfc;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.project-block:last-child { margin-bottom: 0; }
+.project-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.project-block-header .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.project-block-header .p-index {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.project-block-header .p-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.project-block-header .p-stats {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+.project-block-header .p-stats strong { color: #1a1a2e; }
+.project-block-content { padding: 16px 20px; display: block; }
+.source-mini-row {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 0;
+}
+.source-mini-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px 8px;
+  text-align: center;
+  border: 1px solid #f0f0f0;
+}
+.source-mini-card .s-name { font-size: 12px; font-weight: 500; color: #1a1a2e; margin-bottom: 6px; }
+.source-mini-card .s-count { font-size: 15px; font-weight: 700; }
+.source-mini-card .s-label { font-size: 10px; color: #8c8c8c; }
+.footer-note {
+  text-align: center;
+  font-size: 11px;
+  color: #bfbfbf;
+  padding: 20px 0 10px;
+}
+@media print {
+  body { background: #fff; padding: 0; }
+  .report-header { border-radius: 0; }
+  @page { margin: 15mm; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="report-header">
+  <div class="report-header-top">
+    <div class="report-title">
+      <div class="report-type-badge">📊 平台运营报告</div>
+      <h1>【平台运营报告-月报-2026年6月】</h1>
+      <div class="subtitle">报告生成时间：2026-07-07 11:26:17</div>
+    </div>
+  </div>
+</header>
+<div class="section-card">
+  <div class="section-title"><span class="num">1</span>平台基本运营数据</div>
+  <div class="summary-grid">
+    <div class="summary-item">
+      <div class="label">📁 报告时间</div>
+      <div class="value blue" style="font-size:18px;">2026年6月</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">🏗️ 项目数量</div>
+      <div class="value green">7 <span style="font-size:14px;font-weight:400;color:#8c8c8c;">个</span></div>
+    </div>
+    <div class="summary-item">
+      <div class="label">📝 上月总记录</div>
+      <div class="value orange">327 <span style="font-size:14px;font-weight:400;color:#8c8c8c;">条</span></div>
+    </div>
+  </div>
+</div>
+<div class="section-card">
+  <div class="section-title"><span class="num">2</span>项目基本信息</div>
+  <div id="projectInfoTable">
+    <table class="summary-count-table">
+      <thead><tr>
+        <th style="text-align:left;width:18%;">项目名称</th>
+        <th>负责人</th><th>项目总监</th><th>区域</th><th>上月总记录</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="text-align:left;">茅台酒“十四五”技改建设项目花椒坪酒库片区消防站及相关配套设施施工（标段三）项目</td>
+          <td><span class="role-tag person">[国光军]</span></td>
+          <td><span class="role-tag director">[国光军]</span></td>
+          <td><span class="area-badge">贵州省遵义市</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">0</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">仁怀酱酒集团包装物流中心建设项目</td>
+          <td><span class="role-tag person">[李忠伦]</span></td>
+          <td><span class="role-tag director">[李忠伦]</span></td>
+          <td><span class="area-badge">贵州省遵义市</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">2</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">君安北站一标段</td>
+          <td><span class="role-tag person">[金世泽]</span></td>
+          <td><span class="role-tag director">[金世泽]</span></td>
+          <td><span class="area-badge">贵州省贵阳市观山湖区</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">11</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">贵州中医药大学第一附属医院科创大楼建设项目</td>
+          <td><span class="role-tag person">[王忠]</span></td>
+          <td><span class="role-tag director">[王忠]</span></td>
+          <td><span class="area-badge">贵州省贵阳市云岩区</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">7</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">贵州中医药大学第一附属医院（贵州省中医院）国家中医疫病防治基地建设项目</td>
+          <td><span class="role-tag person">[王忠]</span></td>
+          <td><span class="role-tag director">[王忠]</span></td>
+          <td><span class="area-badge">贵州省贵阳市云岩区</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">4</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">安顺市武当路片区城市更新改造及配套基础设施建设项目（一期）</td>
+          <td><span class="role-tag person">[张豪]</span></td>
+          <td><span class="role-tag director">[张豪]</span></td>
+          <td><span class="area-badge">贵州省安顺市西秀区</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">303</strong></td>
+        </tr>
+        <tr>
+          <td style="text-align:left;">贵州经贸职业技术学院黔茶出山产教融合实训基地</td>
+          <td><span class="role-tag person">[王天华, 保桂林]</span></td>
+          <td><span class="role-tag director">[王天华, 保桂林]</span></td>
+          <td><span class="area-badge">贵州省贵阳市云岩区</span></td>
+          <td><strong style="color:#3b82f6;font-size:14px;">0</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="section-card">
+  <div class="section-title"><span class="num">3</span>项目清单 · 数据统计</div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">1</span>
+        <span class="p-name">茅台酒“十四五”技改建设项目花椒坪酒库片区消防站及相关配套设施施工（标段三）项目</span>
+      </div>
+      <div class="p-stats">上月 <strong>0</strong> 条 ｜ 贵州省遵义市</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">2</span>
+        <span class="p-name">仁怀酱酒集团包装物流中心建设项目</span>
+      </div>
+      <div class="p-stats">上月 <strong>2</strong> 条 ｜ 贵州省遵义市</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">2</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">3</span>
+        <span class="p-name">君安北站一标段</span>
+      </div>
+      <div class="p-stats">上月 <strong>11</strong> 条 ｜ 贵州省贵阳市观山湖区</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">11</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">4</span>
+        <span class="p-name">贵州中医药大学第一附属医院科创大楼建设项目</span>
+      </div>
+      <div class="p-stats">上月 <strong>7</strong> 条 ｜ 贵州省贵阳市云岩区</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">6</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">1</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">5</span>
+        <span class="p-name">贵州中医药大学第一附属医院（贵州省中医院）国家中医疫病防治基地建设项目</span>
+      </div>
+      <div class="p-stats">上月 <strong>4</strong> 条 ｜ 贵州省贵阳市云岩区</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">4</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">6</span>
+        <span class="p-name">安顺市武当路片区城市更新改造及配套基础设施建设项目（一期）</span>
+      </div>
+      <div class="p-stats">上月 <strong>303</strong> 条 ｜ 贵州省安顺市西秀区</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">175</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">60</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">30</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">38</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="project-block">
+    <div class="project-block-header">
+      <div class="left">
+        <span class="p-index">7</span>
+        <span class="p-name">贵州经贸职业技术学院黔茶出山产教融合实训基地</span>
+      </div>
+      <div class="p-stats">上月 <strong>0</strong> 条 ｜ 贵州省贵阳市云岩区</div>
+    </div>
+    <div class="project-block-content open" style="display:block;">
+      <div class="source-mini-row" style="grid-template-columns:repeat(6,1fr);">
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">资料库</div>
+          <div class="s-count" style="color:#3b82f6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">项目动态</div>
+          <div class="s-count" style="color:#10b981;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">监理日志</div>
+          <div class="s-count" style="color:#f59e0b;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">日志(安全)</div>
+          <div class="s-count" style="color:#8b5cf6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">旁站记录</div>
+          <div class="s-count" style="color:#ef4444;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+        <div class="source-mini-card">
+          <div class="s-name" style="font-size:12px;">安全隐患</div>
+          <div class="s-count" style="color:#14b8a6;">0</div>
+          <div class="s-label">上月</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="footer-note">本报告由系统自动生成 ｜ 报告生成时间：2026-07-07 11:26:17</div>
+</div>
+</body>
+</html>
