@@ -1,100 +1,103 @@
 # ═══════════════════════════════════════════════════════════
-#  FaaSProjectReportPdf 部署手册
+#  FaaSProjectReportPdf 部署手册（子路径版）
 #
-#  部署方式与 RealTimeVideo 完全一致：
-#    - 后端：docker-compose 运行 Spring Boot
-#    - 前端：宝塔 HTML 项目 + Nginx 反向代理
-#    - 端口 8082（与 RealTimeVideo 的 8081 不冲突）
+#  没有独立域名？没问题！
+#  部署在 realtimevideo.jgjl.cn/report/ 子路径下，
+#  与 RealTimeVideo 共享同一个域名和 Nginx。
 # ═══════════════════════════════════════════════════════════
 
+# 最终访问地址：https://realtimevideo.jgjl.cn/report/
+#
+# 路径规划：
+#   Frontend:  https://realtimevideo.jgjl.cn/report/       ← SPA
+#   API:       https://realtimevideo.jgjl.cn/report/api/   ← 后端
+#   Admin:     https://realtimevideo.jgjl.cn/report/admin/ ← 登录页
+#
+# Nginx 自动剥离 /report 前缀再转发到后端 8082 端口，
+# 后端不需要改任何代码。
+
 # ┌─────────────────────────────────────────────────────────┐
-# │  第 1 步：本地构建（你的电脑上操作）                      │
+# │  第 1 步：服务器 SSH                                    │
 # └─────────────────────────────────────────────────────────┘
 #
-#   # 编译后端
-#   mvn clean package -DskipTests
+#   1.1 创建报告系统目录（在 RealTimeVideo 站点目录下）
+#       mkdir -p /www/wwwroot/realtimevideo.jgjl.cn/report
+#       cd /www/wwwroot/realtimevideo.jgjl.cn/report
 #
-#   # 编译前端
-#   cd frontend && npm run build && cd ..
-#
-#   产物在 deploy/ 目录中已准备好：
-#     deploy/
-#     ├── report-springboot-1.0.0.jar   # 后端 JAR
-#     ├── Dockerfile.backend             # Docker 镜像定义
-#     ├── docker-compose.yml             # 容器编排
-#     ├── .env.example                   # 环境变量模板
-#     ├── frontend-dist/                 # 前端静态文件
-#     ├── nginx.conf                     # Nginx 配置参考
-#     └── DEPLOY.md                      # 本文档
-#
-# ┌─────────────────────────────────────────────────────────┐
-# │  第 2 步：服务器 SSH 操作                                │
-# └─────────────────────────────────────────────────────────┘
-#
-#   2.1 创建项目目录
-#       mkdir -p /www/wwwroot/report.jgjl.cn
-#       cd /www/wwwroot/report.jgjl.cn
-#
-#   2.2 上传以下文件到 /www/wwwroot/report.jgjl.cn/
+#   1.2 上传以下文件到 /www/wwwroot/realtimevideo.jgjl.cn/report/
 #       - docker-compose.yml
 #       - Dockerfile.backend
 #       - report-springboot-1.0.0.jar
 #       - .env（基于 .env.example 修改）
 #
-#   2.3 创建数据目录（H2 持久化 + 日志）
+#   1.3 创建数据目录
 #       mkdir -p data logs
 #
-#   2.4 启动后端
+#   1.4 启动后端
 #       docker compose up -d
 #
-#   2.5 验证后端
+#   1.5 验证后端
 #       curl http://127.0.0.1:8082/actuator/health
 #       → {"status":"UP"}
-#
+
 # ┌─────────────────────────────────────────────────────────┐
-# │  第 3 步：宝塔面板操作                                   │
+# │  第 2 步：上传前端                                       │
 # └─────────────────────────────────────────────────────────┘
 #
-#   3.1 添加站点
-#       左侧菜单 → 网站 → 添加站点
-#       域名: report.jgjl.cn
-#       类型: HTML 项目
-#       根目录: /www/wwwroot/report.jgjl.cn
-#       提交创建
+#   宝塔文件管理 → 进入 /www/wwwroot/realtimevideo.jgjl.cn/
+#   创建 report/ 目录
+#   上传 frontend-dist/ 下所有文件到 report/ 目录
+#   最终目录结构：
 #
-#   3.2 上传前端文件
-#       文件管理 → 进入 /www/wwwroot/report.jgjl.cn/
-#       上传 frontend-dist/ 下所有文件（index.html、assets/ 等）
+#     /www/wwwroot/realtimevideo.jgjl.cn/
+#     ├── index.html               # RealTimeVideo 前端
+#     ├── assets/                   # RealTimeVideo 资源
+#     ├── ...                       # 其他 RealTimeVideo 文件
+#     ├── report/                   # ← 报告系统
+#     │   ├── index.html
+#     │   ├── assets/
+#     │   │   ├── index-xxx.js
+#     │   │   └── index-xxx.css
+#     │   ├── docker-compose.yml
+#     │   ├── Dockerfile.backend
+#     │   ├── .env
+#     │   └── report-springboot-1.0.0.jar
+
+# ┌─────────────────────────────────────────────────────────┐
+# │  第 3 步：修改 Nginx 配置                                │
+# └─────────────────────────────────────────────────────────┘
 #
-#   3.3 配置 SSL 证书
-#       站点设置 → SSL → Let's Encrypt → 申请
+#   宝塔 → 站点设置 → realtimevideo.jgjl.cn → 配置文件
+#   在 server {} 块内，找到 SPA 路由这一行：
 #
-#   3.4 修改 Nginx 配置
-#       站点设置 → 配置文件
-#       全选替换为 deploy/nginx.conf 的内容
-#       （注意把 report.jgjl.cn 改成你的实际域名）
+#       location / { try_files $uri $uri/ /index.html; }
 #
-#   3.5 重启 Nginx
-#       在宝塔面板顶部 → 服务 → Nginx → 重启
-#
+#   在它前面插入 nginx-subpath.conf 全部内容。
+#   保存后 Nginx 自动重载。
+
 # ┌─────────────────────────────────────────────────────────┐
 # │  第 4 步：验证                                          │
 # └─────────────────────────────────────────────────────────┘
 #
-#   浏览器打开 https://report.jgjl.cn
+#   浏览器打开 https://realtimevideo.jgjl.cn/report/
 #   默认账号: admin / admin123
 #
 #   ✅ 登录成功 → 部署完成
 #   ⚠️ 部署后请立即修改管理员密码
-#
+
 # ═══════════════════════════════════════════════════════════
-#  与 RealTimeVideo 对比
+#  两个应用互不影响的原理
 # ═══════════════════════════════════════════════════════════
 #
-#  项目              域名                          后端端口  数据库
-#  RealTimeVideo    realtimevideo.jgjl.cn          8081      MySQL（docker）
-#  FaaSReportPdf    report.jgjl.cn                 8082      H2 嵌入式（无需 docker）
+#  realtimevideo.jgjl.cn/        → RealTimeVideo SPA（原有的）
+#  realtimevideo.jgjl.cn/api/    → RealTimeVideo 后端（8081）
 #
-#  两个项目在各自的子域名下独立运行，互不影响。
-#  后端端口不同（8081 vs 8082），Nginx 配置独立。
+#  realtimevideo.jgjl.cn/report/         → 报告系统 SPA
+#  realtimevideo.jgjl.cn/report/api/     → Nginx 剥离 /report
+#                                         → 报告系统后端 (8082)
+#  realtimevideo.jgjl.cn/report/admin/   → Nginx 剥离 /report
+#                                         → 报告系统后端 (8082)
+#
+#  Nginx 通过 rewrite 剥离 /report 前缀，后端以为自己在根路径。
+#  JS/CSS 资源通过 --base=/report/ 编译，引用路径自动正确。
 # ═══════════════════════════════════════════════════════════
