@@ -29,9 +29,9 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(html.contains("<a href=\"#project-2\">项目 B</a>"), "目录应链接到项目2");
         assertTrue(html.contains("id=\"project-1\""), "项目1应有锚点");
         assertTrue(html.contains("id=\"project-2\""), "项目2应有锚点");
-        assertTrue(html.contains("class=\"project-block first-project\""), "第一个项目块应带 first-project 类");
+        assertTrue(html.contains("__PROJECT_PAGE_1__"), "应包含项目1页码标记");
+        assertTrue(html.contains("__PROJECT_PAGE_2__"), "应包含项目2页码标记");
         assertTrue(html.contains("project-block { page-break-before: always; }"), "项目应强制分页");
-        assertTrue(html.contains("project-block.first-project { counter-reset: page 1; }"), "第一个项目应重置页码计数器");
         assertTrue(html.contains("cover-page { page-break-after: always; }"), "封面应强制分页");
         assertTrue(html.contains("@page:first"), "应隐藏封面页脚");
         assertTrue(html.contains("content: counter(page)"), "应包含页码 CSS");
@@ -66,28 +66,33 @@ public class ReportProjectPdfBuilderTest {
 
         assertTrue(pdf.length > 0, "PDF 应有内容");
 
-        // PdfHelper 尝试从 PDF 命名目的地提取；OpenHTMLToPDF 可能不生成可提取的目的地，
-        // 此时返回空 Map 也是正常行为，不应抛异常。
-        Map<String, Integer> pageMap = PdfHelper.extractPageNumbers(pdf);
-        assertNotNull(pageMap, "页码映射不应为 null");
+        // 通过嵌入的文本标记提取项目起始页码
+        // 封面占第 1 页（无页脚），项目部分从第 2 页开始编号
+        Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(pdf);
+        assertFalse(pageMap.isEmpty(), "应能通过文本标记提取到项目页码");
+        assertTrue(pageMap.containsKey(1), "应包含项目 1 的页码");
+        assertTrue(pageMap.containsKey(2), "应包含项目 2 的页码");
+        assertEquals(Integer.valueOf(2), pageMap.get(1),
+                "项目 1 应从第 2 页开始（封面为第 1 页）");
+        assertTrue(pageMap.get(2) > pageMap.get(1),
+                "项目 2 页码应大于项目 1 页码");
 
-        System.out.println("✅ 提取到项目页码（可能为空）: " + pageMap);
+        System.out.println("✅ 提取到项目页码: " + pageMap);
     }
 
     @Test
     void build_shouldRenderTocWithInjectedPageNumbers(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
 
-        // 模拟 ReportService 中的结构推算逻辑：封面无页码，项目部分从 1 开始
+        // 模拟真实页码：项目 1 = 第 2 页, 项目 2 = 第 3 页
         Map<Integer, Integer> pageNumberMap = new java.util.LinkedHashMap<>();
-        for (int i = 1; i <= data.getProjectReports().size(); i++) {
-            pageNumberMap.put(i, i); // 项目 i 从第 i 页开始
-        }
+        pageNumberMap.put(1, 2);
+        pageNumberMap.put(2, 3);
 
         String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(data, pageNumberMap);
 
-        assertTrue(htmlPass2.contains(">1<"), "目录中项目 1 的页码应为 1");
-        assertTrue(htmlPass2.contains(">2<"), "目录中项目 2 的页码应为 2");
+        assertTrue(htmlPass2.contains(">2<"), "目录中项目 1 的页码应为 2");
+        assertTrue(htmlPass2.contains(">3<"), "目录中项目 2 的页码应为 3");
         assertFalse(htmlPass2.contains(">-<"), "目录中不应出现未解析的 -");
     }
 

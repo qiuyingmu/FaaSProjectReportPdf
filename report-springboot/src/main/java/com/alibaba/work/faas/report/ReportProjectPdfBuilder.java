@@ -58,8 +58,7 @@ public class ReportProjectPdfBuilder {
 
         for (int i = 0; i < data.getProjectReports().size(); i++) {
             PerProjectReport pr = data.getProjectReports().get(i);
-            String extraClass = (i == 0) ? " first-project" : "";
-            html.append("<div class=\"project-block").append(extraClass).append("\" id=\"project-")
+            html.append("<div class=\"project-block\" id=\"project-")
                 .append(i + 1).append("\">\n")
                 .append(buildProjectBlock(pr, data, i + 1))
                 .append("</div>\n");
@@ -165,9 +164,12 @@ public class ReportProjectPdfBuilder {
         StringBuilder sb = new StringBuilder(4096);
 
         // 项目序号标题（可点击返回目录）
+        // 嵌入不可见页码标记，供 PDF 文本提取精确识别项目起始页
         sb.append("<div class=\"project-title-bar\">\n")
           .append("  <a href=\"#toc\" class=\"project-title-link\">\n")
+          .append("    <span class=\"page-marker\">__PROJECT_PAGE_").append(index).append("__</span>\n")
           .append("    <span class=\"project-index\">").append(index).append("</span>\n")
+          .append("    <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
           .append("    <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
           .append("    <span class=\"badge\">").append(pr.getTotalRecords()).append(" 条</span>\n")
           .append("  </a>\n")
@@ -622,9 +624,8 @@ public class ReportProjectPdfBuilder {
         + "}\n"
         + ".toc-table a:hover { text-decoration: underline; }\n"
 
-        // 项目区块：每个项目从新页开始；第一个项目重置页码计数器，使项目部分从 1 开始编号
+        // 项目区块：每个项目从新页开始
         + ".project-block { page-break-before: always; }\n"
-        + ".project-block.first-project { counter-reset: page 1; }\n"
 
         // Header（深色底色替代渐变）
         + ".report-header {\n"
@@ -656,6 +657,12 @@ public class ReportProjectPdfBuilder {
         // 项目序号标题栏（含返回目录链接）
         + ".project-title-bar { margin-bottom: 8px; margin-top: 6px; "
         + "display: flex; align-items: center; flex-wrap: wrap; }\n"
+        + ".page-marker {\n"
+        + "  color: transparent;\n"
+        + "  font-size: 0.1px;\n"
+        + "  line-height: 0;\n"
+        + "  vertical-align: middle;\n"
+        + "}\n"
         + ".project-title-link { text-decoration: none; color: inherit; display: inline-flex; align-items: center; }\n"
         + ".project-index {\n"
         + "  display: inline-block;\n"

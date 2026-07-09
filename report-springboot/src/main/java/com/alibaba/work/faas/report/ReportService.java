@@ -137,7 +137,7 @@ public class ReportService {
     /**
      * 生成项目报告 PDF，并在目录中注入各项目起始页码。
      *
-     * <p>页码通过两阶段确定：优先从第一趟渲染的 PDF 中提取命名目的地；
+     * <p>页码通过两阶段确定：优先从第一趟渲染的 PDF 中提取嵌入的文本标记；
      * 若提取失败，则按文档结构推算（封面固定 1 页 + 每个项目强制从新页开始）。</p>
      */
     private byte[] renderProjectPdfWithPageNumbers(ProjectReportData projectData) throws Exception {
@@ -147,7 +147,7 @@ public class ReportService {
         String xhtmlPass1 = ReportProjectPdfBuilder.INSTANCE.build(projectData, null);
         byte[] pdfPass1 = exportPdfFromHtml(xhtmlPass1);
 
-        // 提取命名目的地 → 页码映射
+        // 提取项目页码映射（project index → page number）
         Map<Integer, Integer> pageNumberMap = extractPageNumberMap(projectData, pdfPass1);
 
         if (pageNumberMap.isEmpty()) {
@@ -171,19 +171,18 @@ public class ReportService {
 
     private Map<Integer, Integer> extractPageNumberMap(ProjectReportData projectData, byte[] pdfBytes)
             throws IOException {
+        Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(pdfBytes);
         Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
-        Map<String, Integer> pageMap = PdfHelper.extractPageNumbers(pdfBytes);
 
-        if (!pageMap.isEmpty()) {
-            for (Map.Entry<String, Integer> e : pageMap.entrySet()) {
-                String name = e.getKey();
-                if (name != null && name.startsWith("project-")) {
-                    int index = Integer.parseInt(name.substring(name.indexOf('-') + 1));
-                    if (index >= 1 && index <= projectData.getProjectReports().size()) {
-                        pageNumberMap.put(index, e.getValue());
-                    }
-                }
+        int projectCount = projectData.getProjectReports().size();
+        for (Map.Entry<Integer, Integer> e : pageMap.entrySet()) {
+            int index = e.getKey();
+            if (index >= 1 && index <= projectCount) {
+                pageNumberMap.put(index, e.getValue());
             }
+        }
+
+        if (!pageNumberMap.isEmpty()) {
             log.info("[ReportService] 从 PDF 提取到 {} 个项目页码", pageNumberMap.size());
         }
 
@@ -191,11 +190,11 @@ public class ReportService {
     }
 
     /**
-     * 按文档结构推算项目起始页码。
+     * 按文档结构推算项目起始页码（fallback）。
      *
-     * <p>封面页使用 {@code page-break-after: always} 固定占 1 页，且通过
-     * {@code @page:first} 隐藏页脚；第一个项目区块通过 {@code counter-reset: page 1}
-     * 使项目部分页码从 1 开始。每个项目仍强制从新页开始，因此项目 i 的起始页码为 i。</p>
+     * <p>封面页通过命名页面规则与项目部分分离并隐藏页脚，项目部分通过
+     * {@code @page project} 从 1 开始编号。每个项目强制从新页开始，
+     * 因此项目 i 的起始页码为 i。</p>
      */
     private Map<Integer, Integer> calculateStructuralPageNumbers(ProjectReportData projectData) {
         Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
