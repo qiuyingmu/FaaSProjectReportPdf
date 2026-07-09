@@ -1,5 +1,6 @@
 package com.alibaba.work.faas.schedule;
 
+import com.alibaba.work.faas.report.PdfMerger;
 import com.alibaba.work.faas.report.ReportDateUtils;
 import com.alibaba.work.faas.report.ReportService;
 import com.alibaba.work.faas.report.async.YidaFormUpdater;
@@ -219,15 +220,8 @@ public class DynamicScheduler implements DisposableBean {
                         ? ReportDateUtils.fd(dr.start) + " ~ " + ReportDateUtils.fd(dr.end)
                         : periodLabel;
 
-                // 平台报告
-                String platName = "平台运营报告-" + periodLabel + "-" + rangeLabel;
-                generateAndSave(ReportType.PLATFORM, tr, platName, "平台报告",
-                        dateRangeDisplay, rangeLabel);
-
-                // 项目报告
-                String projName = "全项目汇总报告-" + rangeLabel;
-                generateAndSave(ReportType.PROJECT, tr, projName, "项目报告",
-                        dateRangeDisplay, rangeLabel);
+                // 生成合并的周期报告（平台 + 全项目）
+                generateCombinedReport(tr, periodLabel, rangeLabel, dateRangeDisplay);
 
                 long cost = System.currentTimeMillis() - startAll;
                 log.info("===== {} 全部完成，总耗时 {}ms =====", periodLabel, cost);
@@ -238,53 +232,83 @@ public class DynamicScheduler implements DisposableBean {
         };
     }
 
-    private void generateAndSave(ReportType type, TimeRange tr,
-                                  String reportName, String reportTypeName,
-                                  String dateRangeDisplay, String rangeLabel) {
+    /**
+     * 生成合并的周期报告：平台报告 + 全项目报告合并在一个 PDF 中。
+     * <p>
+     * 流程：
+     * 1. 生成平台报告 PDF（无页码）
+     * 2. 生成项目报告 PDF（有页码 1/N）
+     * 3. 合并两个 PDF
+     * 4. 上传到 OBS 并更新宜搭记录
+     * </p>
+     */
+    private void generateCombinedReport(TimeRange tr, String periodLabel,
+                                         String rangeLabel, String dateRangeDisplay) {
         long stepStart = System.currentTimeMillis();
         try {
-            log.info("▶ {}", reportName);
+            // ---- 构建报告名称 ----
+            String shortCode = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+            String reportBaseName = "运营报告-" + periodLabel + "-" + rangeLabel
+                    + "-(" + dateRangeDisplay + ")";
+            String reportFileName = reportBaseName + "-" + shortCode + ".pdf";
 
-            ReportRequest request = new ReportRequest(
-                    type, Collections.singletonList(tr), null, null);
-            List<ReportResult> results = reportService.generate(request);
+            log.info("▶ 生成合并报告: {}", reportFileName);
 
+            // ---- 1. 生成平台报告数据 ----
+            ReportRequest platRequest = new ReportRequest(
+                    ReportType.PLATFORM, Collections.singletonList(tr), null, null);
+            List<ReportResult> platResults = reportService.generate(platRequest);
+            byte[] platformPdf = (platResults != null && !platResults.isEmpty())
+                    ? platResults.get(0).getPdfBytes()
+                    : null;
+
+            // ---- 2. 生成全项目报告数据 ----
+            ReportRequest projRequest = new ReportRequest(
+                    ReportType.PROJECT, Collections.singletonList(tr), null, null);
+            List<ReportResult> projResults = reportService.generate(projRequest);
+            byte[] projectPdf = (projResults != null && !projResults.isEmpty())
+                    ? projResults.get(0).getPdfBytes()
+                    : null;
+
+            if (platformPdf == null && projectPdf == null) {
+                log.warn("⚠ 平台报告和项目报告均无数据，跳过");
+                return;
+            }
+
+            // ---- 3. 合并 PDF（平台在前，项目在后） ----
+            byte[] combinedPdf = PdfMerger.merge(
+                    platformPdf != null ? platformPdf : new byte[0],
+                    projectPdf != null ? projectPdf : new byte[0]);
+
+            log.info("✅ 合并报告完成: {} ({} KB)",
+                    reportFileName, combinedPdf.length / 1024);
+
+            // ---- 4. 创建宜搭记录 ----
             String formInstId = formUpdater.createReportRecord(
-                    reportName, reportTypeName, rangeLabel, dateRangeDisplay);
+                    reportBaseName, periodLabel, rangeLabel, dateRangeDisplay);
 
             if (formInstId == null || formInstId.isEmpty()) {
-                log.error("创建记录失败，跳过 {}", reportName);
+                log.error("创建宜搭记录失败，跳过 {}", reportFileName);
                 return;
             }
-            log.info("✅ 创建记录: {}", formInstId);
+            log.info("✅ 创建宜搭记录: {}", formInstId);
 
-            if (results.isEmpty()) {
-                String remark = "该时间范围内无数据 | " + dateRangeDisplay;
-                formUpdater.updateReportRecord(formInstId, null,
-                        dateRangeDisplay, true, remark);
-                log.warn("⚠ {} 无数据，已标记完成（{}ms）", reportName,
-                        System.currentTimeMillis() - stepStart);
-                return;
-            }
-
-            ReportResult rr = results.get(0);
-            log.info("✅ 生成完成: {} 条, PDF {} KB",
-                    rr.getTotalRecords(), rr.getPdfSize() / 1024);
-
-            String obsName = reportTypeName.replace(" ", "") + "_" + tr.getCode();
+            // ---- 5. 上传合并 PDF 到 OBS ----
             Map<String, String> obsInfo = formUpdater.uploadToObs(
-                    rr.getPdfBytes(), reportTypeName, obsName);
+                    combinedPdf, periodLabel + "报告", reportBaseName);
+
             log.info("✅ OBS 上传成功: {}", obsInfo.get("objectName"));
 
+            // ---- 6. 更新宜搭记录（添加附件 + 标记完成） ----
             formUpdater.updateReportRecord(formInstId,
                     Collections.singletonList(obsInfo),
                     dateRangeDisplay, true, "已完成");
 
-            log.info("✅ {} 保存完成（{}ms）", reportName,
+            log.info("✅ 合并报告保存完成（{}ms）", reportFileName,
                     System.currentTimeMillis() - stepStart);
 
         } catch (Exception e) {
-            log.error("{} 失败: {}", reportName, e.getMessage(), e);
+            log.error("{} 合并报告失败: {}", periodLabel, e.getMessage(), e);
         }
     }
 

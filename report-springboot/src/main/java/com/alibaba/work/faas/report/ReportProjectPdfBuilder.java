@@ -795,5 +795,13 @@ public class ReportProjectPdfBuilder {
         + "}\n"
 
         // 打印
-        + "@page { margin: 12mm 15mm; }\n";
+        + "@page {\n"
+        + "  margin: 12mm 15mm 18mm 15mm;\n"
+        + "  @bottom-center {\n"
+        + "    content: counter(page) \"/\" counter(pages);\n"
+        + "    font-size: 9px;\n"
+        + "    color: #999;\n"
+        + "    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;\n"
+        + "  }\n"
+        + "}\n";
 }

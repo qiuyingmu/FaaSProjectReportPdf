@@ -61,12 +61,19 @@ public class YidaFormUpdater {
 
     /**
      * 创建运营报告表单记录，状态标记为"生成中"。
-     * 在 FaaS 第一阶段调用，必须在 10s 内返回。
      *
-     * @param reportName  报告名称（如 "平台运营报告-第28周"）
-     * @param reportType  报告类型（"平台报告" / "项目报告"）
-     * @param dateRange   日期范围标签（如 "第28周（2026-07-06~2026-07-12）"）
-     * @param timeRanges  时间范围列表（如 "thisWeek,lastMonth"）
+     * <p>对于周期报告（周报/月报/季报）：</p>
+     * <ul>
+     *   <li>reportName — 运营报告名称（不含扩展名，如 "运营报告-周报-6月第1周-(2026-06-01 ~ 2026-06-07)"）</li>
+     *   <li>reportType — 周期类型标签（"周报" / "月报" / "季报"，存入 radioField_mr8y19k0）</li>
+     *   <li>dateRange — 日期范围标签（如 "6月第1周"）</li>
+     *   <li>timeRanges — 时间范围描述（如 "2026-06-01 ~ 2026-06-07"）</li>
+     * </ul>
+     *
+     * @param reportName  报告名称
+     * @param reportType  报告周期类型（周报/月报/季报）
+     * @param dateRange   日期范围标签
+     * @param timeRanges  时间范围描述
      * @return 新建的表单实例 ID
      * @throws Exception 创建失败时抛出
      */

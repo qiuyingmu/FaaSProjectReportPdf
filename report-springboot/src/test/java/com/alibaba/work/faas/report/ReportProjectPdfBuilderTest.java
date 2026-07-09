@@ -30,10 +30,12 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(html.contains("id=\"project-2\""), "项目2应有锚点");
         assertTrue(html.contains("project-block { page-break-before: always; }"), "项目应强制分页");
         assertTrue(html.contains("cover-page { page-break-after: always; }"), "封面应强制分页");
+        assertTrue(html.contains("content: counter(page)"), "应包含页码 CSS");
+        assertTrue(html.contains("counter(pages)"), "应包含总页数 CSS");
     }
 
     @Test
-    void build_shouldRenderPdf(@TempDir Path tempDir) throws Exception {
+    void build_shouldRenderPdfWithPageNumbers(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
         String html = ReportProjectPdfBuilder.INSTANCE.build(data);
         assertFalse(html.isEmpty());
