@@ -17,9 +17,11 @@
 - 两部分通过 PDFBox 合并
 
 ### 3. 页码
-- 全项目报告页码格式：`1/17`（当前页/总页数）
+- 全项目报告页码格式：`1/N`（当前页/总页数）
 - 显示在页面底部中间
+- **封面页无页脚页码**
 - 平台报告部分无页码
+- **目录中的“页码”列现在会显示正确的项目起始页码（不再显示“-”）**
 
 ### 4. 报告命名格式
 - PDF 文件名：`运营报告-周报-6月第1周-(2026-06-01 ~ 2026-06-07)-xxxx.pdf`
@@ -31,8 +33,10 @@
 |------|---------|------|
 | `ReportPeriod.java` | **新增** | 周期枚举 |
 | `PdfMerger.java` | **新增** | PDFBox 合并工具 |
+| `PdfHelper.java` | **新增/重写** | 从 PDF 提取命名目的地页码；结构推算 fallback |
 | `DynamicScheduler.java` | **修改** | 合并报告生成流程 |
-| `ReportProjectPdfBuilder.java` | **修改** | 加入页码 CSS |
+| `ReportProjectPdfBuilder.java` | **修改** | 封面/项目分页、页码 CSS、first-project 页码重置 |
+| `ReportService.java` | **修改** | 两趟渲染 + 结构推算页码 fallback |
 | `YidaFormUpdater.java` | **修改** | 适配新命名 |
 
 ## 部署

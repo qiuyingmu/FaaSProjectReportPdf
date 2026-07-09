@@ -58,7 +58,9 @@ public class ReportProjectPdfBuilder {
 
         for (int i = 0; i < data.getProjectReports().size(); i++) {
             PerProjectReport pr = data.getProjectReports().get(i);
-            html.append("<div class=\"project-block\" id=\"project-").append(i + 1).append("\">\n")
+            String extraClass = (i == 0) ? " first-project" : "";
+            html.append("<div class=\"project-block").append(extraClass).append("\" id=\"project-")
+                .append(i + 1).append("\">\n")
                 .append(buildProjectBlock(pr, data, i + 1))
                 .append("</div>\n");
         }
@@ -620,8 +622,9 @@ public class ReportProjectPdfBuilder {
         + "}\n"
         + ".toc-table a:hover { text-decoration: underline; }\n"
 
-        // 项目区块：每个项目从新页开始
+        // 项目区块：每个项目从新页开始；第一个项目重置页码计数器，使项目部分从 1 开始编号
         + ".project-block { page-break-before: always; }\n"
+        + ".project-block.first-project { counter-reset: page 1; }\n"
 
         // Header（深色底色替代渐变）
         + ".report-header {\n"
@@ -833,5 +836,8 @@ public class ReportProjectPdfBuilder {
         + "    color: #999;\n"
         + "    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;\n"
         + "  }\n"
+        + "}\n"
+        + "@page:first {\n"
+        + "  @bottom-center { content: none; }\n"
         + "}\n";
 }

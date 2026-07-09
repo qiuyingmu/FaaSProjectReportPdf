@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -134,32 +135,28 @@ public class ReportService {
     }
 
     /**
-     * 两趟渲染：第一趟生成临时 PDF 提取项目起始页码，第二趟注入正确页码。
+     * 生成项目报告 PDF，并在目录中注入各项目起始页码。
+     *
+     * <p>页码通过两阶段确定：优先从第一趟渲染的 PDF 中提取命名目的地；
+     * 若提取失败，则按文档结构推算（封面固定 1 页 + 每个项目强制从新页开始）。</p>
      */
     private byte[] renderProjectPdfWithPageNumbers(ProjectReportData projectData) throws Exception {
         long start = System.currentTimeMillis();
 
-        // 第一趟：渲染无页码版本
+        // 第一趟：渲染无页码版本，用于提取真实页码
         String xhtmlPass1 = ReportProjectPdfBuilder.INSTANCE.build(projectData, null);
         byte[] pdfPass1 = exportPdfFromHtml(xhtmlPass1);
 
         // 提取命名目的地 → 页码映射
-        Map<String, Integer> pageMap = PdfHelper.extractPageNumbers(pdfPass1);
+        Map<Integer, Integer> pageNumberMap = extractPageNumberMap(projectData, pdfPass1);
 
-        // 构建 pageNumberMap (project index → page number)
-        Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
-        if (!pageMap.isEmpty()) {
-            for (Map.Entry<String, Integer> e : pageMap.entrySet()) {
-                String name = e.getKey();
-                if (name != null && name.startsWith("project-")) {
-                    int index = Integer.parseInt(name.substring(name.indexOf('-') + 1));
-                    pageNumberMap.put(index, e.getValue());
-                }
-            }
-            log.info("[ReportService] 第一趟渲染完成，提取到 {} 个项目页码，耗时 {}ms",
-                    pageNumberMap.size(), System.currentTimeMillis() - start);
-        } else {
-            log.warn("[ReportService] 未提取到项目页码，使用无页码版本");
+        if (pageNumberMap.isEmpty()) {
+            log.warn("[ReportService] 未提取到项目页码，按文档结构推算");
+            pageNumberMap = calculateStructuralPageNumbers(projectData);
+        }
+
+        if (pageNumberMap.isEmpty()) {
+            log.warn("[ReportService] 无项目页码可用，使用无页码版本");
             return pdfPass1;
         }
 
@@ -167,9 +164,47 @@ public class ReportService {
         String xhtmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(projectData, pageNumberMap);
         byte[] pdfPass2 = exportPdfFromHtml(xhtmlPass2);
 
-        log.info("[ReportService] 第二趟渲染完成，总耗时 {}ms",
-                System.currentTimeMillis() - start);
+        log.info("[ReportService] 项目报告渲染完成，共 {} 个项目页码，总耗时 {}ms",
+                pageNumberMap.size(), System.currentTimeMillis() - start);
         return pdfPass2;
+    }
+
+    private Map<Integer, Integer> extractPageNumberMap(ProjectReportData projectData, byte[] pdfBytes)
+            throws IOException {
+        Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
+        Map<String, Integer> pageMap = PdfHelper.extractPageNumbers(pdfBytes);
+
+        if (!pageMap.isEmpty()) {
+            for (Map.Entry<String, Integer> e : pageMap.entrySet()) {
+                String name = e.getKey();
+                if (name != null && name.startsWith("project-")) {
+                    int index = Integer.parseInt(name.substring(name.indexOf('-') + 1));
+                    if (index >= 1 && index <= projectData.getProjectReports().size()) {
+                        pageNumberMap.put(index, e.getValue());
+                    }
+                }
+            }
+            log.info("[ReportService] 从 PDF 提取到 {} 个项目页码", pageNumberMap.size());
+        }
+
+        return pageNumberMap;
+    }
+
+    /**
+     * 按文档结构推算项目起始页码。
+     *
+     * <p>封面页使用 {@code page-break-after: always} 固定占 1 页，且通过
+     * {@code @page:first} 隐藏页脚；第一个项目区块通过 {@code counter-reset: page 1}
+     * 使项目部分页码从 1 开始。每个项目仍强制从新页开始，因此项目 i 的起始页码为 i。</p>
+     */
+    private Map<Integer, Integer> calculateStructuralPageNumbers(ProjectReportData projectData) {
+        Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
+        int projectCount = projectData.getProjectReports().size();
+        for (int i = 1; i <= projectCount; i++) {
+            pageNumberMap.put(i, i);
+        }
+        log.info("[ReportService] 按结构推算 {} 个项目页码", projectCount);
+        return pageNumberMap;
     }
 
     private byte[] exportPdfFromHtml(String xhtml) throws Exception {
