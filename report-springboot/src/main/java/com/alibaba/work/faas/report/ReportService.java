@@ -1,23 +1,22 @@
 package com.alibaba.work.faas.report;
 
 import com.alibaba.work.faas.report.async.YidaFormUpdater;
+import com.alibaba.work.faas.report.model.ProjectReportData;
 import com.alibaba.work.faas.report.model.ReportRequest;
 import com.alibaba.work.faas.report.model.ReportResult;
 import com.alibaba.work.faas.report.model.ReportType;
 import com.alibaba.work.faas.report.model.TimeRange;
 import com.alibaba.work.faas.report.strategy.PlatformReportStrategy;
+import com.alibaba.work.faas.report.strategy.ProjectReportStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 
 /**
  * 报表服务门面 —— 对外统一入口。
- *
- * <p>采用<strong>门面模式</strong>，内部委托给
- * {@link ReportStrategyFactory} + 各 {@link com.alibaba.work.faas.report.strategy.ReportStrategy} 实现。
- * 外部调用者无需关心策略选择逻辑。</p>
  *
  * @author Senior Developer
  * 创建于 2026/07/07
@@ -29,29 +28,23 @@ public class ReportService {
 
     private final ReportStrategyFactory factory;
     private final PlatformReportStrategy platformStrategy;
+    private final ProjectReportStrategy projectStrategy;
     private final YidaFormUpdater formUpdater;
+    private final ReportPdfExporter pdfExporter;
 
     public ReportService(ReportStrategyFactory factory,
                           PlatformReportStrategy platformStrategy,
-                          YidaFormUpdater formUpdater) {
+                          ProjectReportStrategy projectStrategy,
+                          YidaFormUpdater formUpdater,
+                          ReportPdfExporter pdfExporter) {
         this.factory = factory;
         this.platformStrategy = platformStrategy;
+        this.projectStrategy = projectStrategy;
         this.formUpdater = formUpdater;
+        this.pdfExporter = pdfExporter;
     }
 
 
-    // ========================================
-    //  新版入口：通过 ReportRequest 统一参数
-    // ========================================
-
-    /**
-     * 根据请求参数生成报表。
-     * <p>支持平台报告/项目报告，每个时间范围生成一份 PDF。</p>
-     *
-     * @param request 报表请求参数（含类型 + 时间范围）
-     * @return 每个时间范围对应的报表结果列表
-     * @throws Exception 查询或生成失败时抛出
-     */
     public List<ReportResult> generate(ReportRequest request) throws Exception {
         return factory.execute(request);
     }
@@ -60,17 +53,9 @@ public class ReportService {
     // ========================================
     //  合并周期报告（周报/月报/季报）
     //  生成一份 PDF：平台报告（无页码）+ 全项目报告（有页码 1/N）
+    //  两趟渲染：第一趟获取各项目起始页码，第二趟注入正确页码
     // ========================================
 
-    /**
-     * 生成合并的周期报告（平台 + 全项目合并在一个 PDF 中）。
-     *
-     * @param tr            时间范围
-     * @param periodLabel   周期标签（周报/月报/季报）
-     * @param rangeLabel    范围标签（如 "6月第1周"）
-     * @param dateDisplay   日期显示（如 "2026-06-01 ~ 2026-06-07"）
-     * @return 合并后的 PDF 字节数组和 OBS 信息；如果总无数据则返回 null
-     */
     public Map<String, Object> generateCombinedPeriodReport(TimeRange tr,
                                                               String periodLabel,
                                                               String rangeLabel,
@@ -81,19 +66,33 @@ public class ReportService {
 
         log.info("▶ 生成合并报告: {}", reportBaseName);
 
-        // 1. 生成平台报告数据
+        // 1. 生成平台报告 PDF
         ReportRequest platRequest = new ReportRequest(
                 ReportType.PLATFORM, Collections.singletonList(tr), null, null);
         List<ReportResult> platResults = generate(platRequest);
         byte[] platformPdf = (platResults != null && !platResults.isEmpty())
                 ? platResults.get(0).getPdfBytes() : null;
 
-        // 2. 生成全项目报告数据
+        // 2. 生成全项目报告（两趟渲染获取页码）
         ReportRequest projRequest = new ReportRequest(
                 ReportType.PROJECT, Collections.singletonList(tr), null, null);
-        List<ReportResult> projResults = generate(projRequest);
-        byte[] projectPdf = (projResults != null && !projResults.isEmpty())
-                ? projResults.get(0).getPdfBytes() : null;
+
+        byte[] projectPdf = null;
+        Map<String, Object> projDataMap = projectStrategy.buildProjectReportData(projRequest);
+        if (projDataMap != null && Boolean.TRUE.equals(projDataMap.get("isMultiProject"))) {
+            @SuppressWarnings("unchecked")
+            List<ProjectReportData> dataList = (List<ProjectReportData>) projDataMap.get("dataList");
+            if (dataList != null && !dataList.isEmpty()) {
+                projectPdf = renderProjectPdfWithPageNumbers(dataList.get(0));
+            }
+        }
+        // 退路：如果策略未返回数据，用标准 generate 流程
+        if (projectPdf == null) {
+            List<ReportResult> fallbackResults = generate(projRequest);
+            if (fallbackResults != null && !fallbackResults.isEmpty()) {
+                projectPdf = fallbackResults.get(0).getPdfBytes();
+            }
+        }
 
         if (platformPdf == null && projectPdf == null) {
             log.warn("⚠ 平台报告和项目报告均无数据，跳过");
@@ -129,55 +128,71 @@ public class ReportService {
         result.put("obsUrl", obsInfo.get("previewUrl"));
         result.put("pdfSize", combinedPdf.length);
         result.put("shortCode", shortCode);
-
         log.info("✅ 合并报告完成: {} ({} KB, formId={})",
                 reportBaseName, combinedPdf.length / 1024, formInstId);
-
         return result;
+    }
+
+    /**
+     * 两趟渲染：第一趟生成临时 PDF 提取项目起始页码，第二趟注入正确页码。
+     */
+    private byte[] renderProjectPdfWithPageNumbers(ProjectReportData projectData) throws Exception {
+        long start = System.currentTimeMillis();
+
+        // 第一趟：渲染无页码版本
+        String xhtmlPass1 = ReportProjectPdfBuilder.INSTANCE.build(projectData, null);
+        byte[] pdfPass1 = exportPdfFromHtml(xhtmlPass1);
+
+        // 提取命名目的地 → 页码映射
+        Map<String, Integer> pageMap = PdfHelper.extractPageNumbers(pdfPass1);
+
+        // 构建 pageNumberMap (project index → page number)
+        Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
+        if (!pageMap.isEmpty()) {
+            for (Map.Entry<String, Integer> e : pageMap.entrySet()) {
+                String name = e.getKey();
+                if (name != null && name.startsWith("project-")) {
+                    int index = Integer.parseInt(name.substring(name.indexOf('-') + 1));
+                    pageNumberMap.put(index, e.getValue());
+                }
+            }
+            log.info("[ReportService] 第一趟渲染完成，提取到 {} 个项目页码，耗时 {}ms",
+                    pageNumberMap.size(), System.currentTimeMillis() - start);
+        } else {
+            log.warn("[ReportService] 未提取到项目页码，使用无页码版本");
+            return pdfPass1;
+        }
+
+        // 第二趟：渲染带正确页码的版本
+        String xhtmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(projectData, pageNumberMap);
+        byte[] pdfPass2 = exportPdfFromHtml(xhtmlPass2);
+
+        log.info("[ReportService] 第二趟渲染完成，总耗时 {}ms",
+                System.currentTimeMillis() - start);
+        return pdfPass2;
+    }
+
+    private byte[] exportPdfFromHtml(String xhtml) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(65536);
+        pdfExporter.renderToStream(xhtml, baos);
+        return baos.toByteArray();
     }
 
 
     // ========================================
-    //  向后兼容方法（委托给 PlatformReportStrategy）
+    //  向后兼容方法
     // ========================================
 
-    /**
-     * 加载平台报表数据。
-     *
-     * @param range 时间范围：week / lastWeek / month / lastMonth
-     * @return 报表数据
-     * @throws Exception 查询失败时抛出
-     * @deprecated 请使用 {@link #generate(ReportRequest)} 代替
-     */
     @Deprecated
     public ReportData loadStats(String range) throws Exception {
         return platformStrategy.loadStats(range);
     }
 
-
-    // ========================================
-    //  便捷方法：一步生成
-    // ========================================
-
-    /**
-     * 从 FaaS 入参 Map 直接生成报表。
-     * <p>组合了 {@link ReportRequest#fromInput(Map)} 和 {@link #generate(ReportRequest)}。</p>
-     *
-     * @param input FaaS 的 input Map
-     * @return 报表结果列表
-     * @throws Exception 查询或生成失败时抛出
-     */
     public List<ReportResult> generateFromInput(Map<String, Object> input) throws Exception {
         ReportRequest request = ReportRequest.fromInput(input);
         return generate(request);
     }
 
-    /**
-     * 快捷方法：生成平台报表。
-     *
-     * @param timeRanges 时间范围列表
-     * @return 报表结果列表
-     */
     public List<ReportResult> generatePlatformReport(TimeRange... timeRanges) throws Exception {
         ReportRequest request = new ReportRequest(
                 ReportType.PLATFORM,

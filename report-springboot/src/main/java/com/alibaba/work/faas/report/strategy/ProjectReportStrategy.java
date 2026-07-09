@@ -170,9 +170,78 @@ public class ProjectReportStrategy implements ReportStrategy {
     }
 
 
+    /**
+     * 仅构建项目报告数据，不生成 PDF。
+     * 用于两趟渲染：先获取数据，再由 ReportService 控制渲染流程。
+     */
+    public Map<String, Object> buildProjectReportData(ReportRequest request) throws Exception {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        boolean hasProjectParam = StringUtils.isNotBlank(request.getProjectId())
+                || StringUtils.isNotBlank(request.getProjectName());
+
+        if (hasProjectParam) {
+            // 单项目模式
+            ProjectInfo info = resolveProject(request.getProjectId(), request.getProjectName());
+            if (info == null) throw new IllegalArgumentException("未找到项目");
+            ProjectReportData.ProjectBrief brief = new ProjectReportData.ProjectBrief(
+                    info.name, info.director, info.engineer, info.address, info.area);
+            result.put("isMultiProject", false);
+            // ... 简化为单项目模式
+            return null;
+        }
+
+        // 全项目模式
+        List<ProjectInfo> allProjectInfo = resolveAllProjects();
+        if (allProjectInfo.isEmpty()) throw new IllegalArgumentException("系统中没有可用的项目");
+
+        Map<String, ProjectReportData.ProjectBrief> briefMap = new LinkedHashMap<>();
+        for (ProjectInfo pi : allProjectInfo) {
+            briefMap.put(pi.name, new ProjectReportData.ProjectBrief(
+                    pi.name, pi.director, pi.engineer, pi.address, pi.area));
+        }
+
+        List<ProjectReportData> dataList = new ArrayList<>();
+        for (TimeRange tr : request.getTimeRanges()) {
+            String range = tr.toReportRange();
+            ReportDateUtils.DateRange dr = ReportDateUtils.getRange(range);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+
+            Map<String, List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> allSourceData
+                    = queryAllSourceData(dr.start, dr.end);
+
+            List<ProjectReportData.PerProjectReport> projectReports = new ArrayList<>();
+            for (ProjectReportData.ProjectBrief brief : briefMap.values()) {
+                List<ProjectReportData.SourceSection> sections =
+                        buildSections(brief.getName(), allSourceData);
+                projectReports.add(new ProjectReportData.PerProjectReport(brief, sections));
+            }
+
+            ProjectReportData data = new ProjectReportData(
+                    sdf.format(dr.start), sdf.format(dr.end),
+                    ReportDateUtils.rangeLabel(range),
+                    ReportDateUtils.periodName(range),
+                    projectReports);
+            dataList.add(data);
+        }
+
+        result.put("isMultiProject", true);
+        result.put("dataList", dataList);
+        result.put("projectInfos", allProjectInfo);
+        return result;
+    }
+
+
     // ========================================
     //  导出
     // ========================================
+
+    /**
+     * 从 ProjectReportData 生成 HTML + PDF（底层 exportReport 委托）。
+     */
+    public ReportResult exportData(TimeRange tr, ProjectReportData data) throws Exception {
+        return exportReport(tr, data, System.currentTimeMillis());
+    }
 
     private ReportResult exportReport(TimeRange tr, ProjectReportData data, long startTime) throws Exception {
         String html = ReportProjectHtmlBuilder.INSTANCE.build(data);

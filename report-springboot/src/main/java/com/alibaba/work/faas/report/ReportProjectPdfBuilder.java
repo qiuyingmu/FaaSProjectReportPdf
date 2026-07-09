@@ -39,6 +39,10 @@ public class ReportProjectPdfBuilder {
     // ========================================
 
     public String build(ProjectReportData data) {
+        return build(data, null);
+    }
+
+    public String build(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
         StringBuilder html = new StringBuilder(16384);
         String title = data.isMultiProject()
                 ? "全项目汇总报告"
@@ -50,11 +54,10 @@ public class ReportProjectPdfBuilder {
             .append("<style type=\"text/css\">\n").append(PDF_CSS).append("</style>\n")
             .append("</head>\n<body>\n")
             .append("<div class=\"container\">\n")
-            .append(buildCoverPage(data));
+            .append(buildCoverPage(data, pageNumberMap));
 
         for (int i = 0; i < data.getProjectReports().size(); i++) {
             PerProjectReport pr = data.getProjectReports().get(i);
-            // 每个项目都从新的一页开始
             html.append("<div class=\"project-block\" id=\"project-").append(i + 1).append("\">\n")
                 .append(buildProjectBlock(pr, data, i + 1))
                 .append("</div>\n");
@@ -72,12 +75,16 @@ public class ReportProjectPdfBuilder {
     // ========================================
 
     private String buildCoverPage(ProjectReportData data) {
+        return buildCoverPage(data, null);
+    }
+
+    private String buildCoverPage(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"cover-page\">\n")
           .append(buildHeader(data));
 
         if (data.isMultiProject() && data.getProjectCount() > 0) {
-            sb.append(buildToc(data));
+            sb.append(buildToc(data, pageNumberMap));
         }
 
         sb.append("</div>\n");
@@ -90,11 +97,15 @@ public class ReportProjectPdfBuilder {
     // ========================================
 
     private String buildToc(ProjectReportData data) {
+        return buildToc(data, null);
+    }
+
+    private String buildToc(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
         StringBuilder sb = new StringBuilder();
-        sb.append("<div class=\"toc\">\n")
+        sb.append("<div class=\"toc\" id=\"toc\">\n")
           .append("  <div class=\"toc-title\">项目目录</div>\n")
           .append("  <table class=\"toc-table\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n")
-          .append("    <thead><tr><th width=\"60\">序号</th><th>项目名称</th><th width=\"120\">数据量</th></tr></thead>\n")
+          .append("    <thead><tr><th width=\"50\">序号</th><th>项目名称</th><th width=\"80\">数据量</th><th width=\"60\">页码</th></tr></thead>\n")
           .append("    <tbody>\n");
 
         List<PerProjectReport> projects = data.getProjectReports();
@@ -102,10 +113,14 @@ public class ReportProjectPdfBuilder {
             PerProjectReport pr = projects.get(i);
             String name = escHtml(pr.getBrief().getName());
             int count = pr.getTotalRecords();
+            String pageStr = (pageNumberMap != null && pageNumberMap.containsKey(i + 1))
+                    ? String.valueOf(pageNumberMap.get(i + 1))
+                    : "-";
             sb.append("      <tr>")
               .append("<td>").append(i + 1).append("</td>")
               .append("<td><a href=\"#project-").append(i + 1).append("\">").append(name).append("</a></td>")
               .append("<td>").append(count).append(" 条</td>")
+              .append("<td>").append(pageStr).append("</td>")
               .append("</tr>\n");
         }
 
@@ -147,11 +162,14 @@ public class ReportProjectPdfBuilder {
 
         StringBuilder sb = new StringBuilder(4096);
 
-        // 项目序号标题
+        // 项目序号标题（可点击返回目录）
         sb.append("<div class=\"project-title-bar\">\n")
-          .append("  <span class=\"project-index\">").append(index).append("</span>\n")
-          .append("  <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
-          .append("  <span class=\"badge\">").append(pr.getTotalRecords()).append(" 条</span>\n")
+          .append("  <a href=\"#toc\" class=\"project-title-link\">\n")
+          .append("    <span class=\"project-index\">").append(index).append("</span>\n")
+          .append("    <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
+          .append("    <span class=\"badge\">").append(pr.getTotalRecords()).append(" 条</span>\n")
+          .append("  </a>\n")
+          .append("  <a href=\"#toc\" class=\"back-to-toc\">返回目录</a>\n")
           .append("</div>\n");
 
         // 项目信息卡片
@@ -632,8 +650,10 @@ public class ReportProjectPdfBuilder {
         + "  margin-top: 6px;\n"
         + "}\n"
 
-        // 项目序号标题栏
-        + ".project-title-bar { margin-bottom: 8px; margin-top: 6px; }\n"
+        // 项目序号标题栏（含返回目录链接）
+        + ".project-title-bar { margin-bottom: 8px; margin-top: 6px; "
+        + "display: flex; align-items: center; flex-wrap: wrap; }\n"
+        + ".project-title-link { text-decoration: none; color: inherit; display: inline-flex; align-items: center; }\n"
         + ".project-index {\n"
         + "  display: inline-block;\n"
         + "  width: 24px; height: 24px; line-height: 24px;\n"
@@ -649,6 +669,16 @@ public class ReportProjectPdfBuilder {
         + "  font-weight: 700;\n"
         + "  color: #1a1a2e;\n"
         + "  padding-left: 6px;\n"
+        + "}\n"
+        + ".back-to-toc {\n"
+        + "  font-size: 10px;\n"
+        + "  color: #2563eb;\n"
+        + "  text-decoration: none;\n"
+        + "  margin-left: 8px;\n"
+        + "  padding: 1px 6px;\n"
+        + "  border: 1px solid #2563eb;\n"
+        + "  border-radius: 4px;\n"
+        + "  white-space: nowrap;\n"
         + "}\n"
 
         // Section card（白卡片）
