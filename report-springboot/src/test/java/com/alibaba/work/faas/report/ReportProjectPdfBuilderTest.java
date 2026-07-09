@@ -1,6 +1,7 @@
 package com.alibaba.work.faas.report;
 
 import com.alibaba.work.faas.report.model.ProjectReportData;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -59,7 +60,7 @@ public class ReportProjectPdfBuilderTest {
     @Test
     void build_shouldExtractPageNumbersFromRenderedPdf(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
-        String html = ReportProjectPdfBuilder.INSTANCE.build(data);
+        String html = ReportProjectPdfBuilder.INSTANCE.buildProjectsOnly(data, null);
 
         ReportPdfExporter exporter = new ReportPdfExporter();
         byte[] pdf = exporter.exportPdfFromHtml(html);
@@ -67,13 +68,13 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(pdf.length > 0, "PDF 应有内容");
 
         // 通过嵌入的文本标记提取项目起始页码
-        // 封面占第 1 页（无页脚），项目部分从第 2 页开始编号
+        // 项目正文作为独立文档渲染，项目 1 从第 1 页开始
         Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(pdf);
         assertFalse(pageMap.isEmpty(), "应能通过文本标记提取到项目页码");
         assertTrue(pageMap.containsKey(1), "应包含项目 1 的页码");
         assertTrue(pageMap.containsKey(2), "应包含项目 2 的页码");
-        assertEquals(Integer.valueOf(2), pageMap.get(1),
-                "项目 1 应从第 2 页开始（封面为第 1 页）");
+        assertEquals(Integer.valueOf(1), pageMap.get(1),
+                "项目 1 应从第 1 页开始");
         assertTrue(pageMap.get(2) > pageMap.get(1),
                 "项目 2 页码应大于项目 1 页码");
 
@@ -84,16 +85,51 @@ public class ReportProjectPdfBuilderTest {
     void build_shouldRenderTocWithInjectedPageNumbers(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
 
-        // 模拟真实页码：项目 1 = 第 2 页, 项目 2 = 第 3 页
+        // 模拟真实跨页场景：项目 1 = 第 1 页, 项目 2 = 第 3 页
         Map<Integer, Integer> pageNumberMap = new java.util.LinkedHashMap<>();
-        pageNumberMap.put(1, 2);
+        pageNumberMap.put(1, 1);
         pageNumberMap.put(2, 3);
 
-        String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(data, pageNumberMap);
+        String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.buildCoverOnly(data, pageNumberMap);
 
-        assertTrue(htmlPass2.contains(">2<"), "目录中项目 1 的页码应为 2");
+        assertTrue(htmlPass2.contains(">1<"), "目录中项目 1 的页码应为 1");
         assertTrue(htmlPass2.contains(">3<"), "目录中项目 2 的页码应为 3");
         assertFalse(htmlPass2.contains(">-<"), "目录中不应出现未解析的 -");
+    }
+
+    @Test
+    void build_shouldMergeCoverAndProjectsStartingAtPageOne(@TempDir Path tempDir) throws Exception {
+        ProjectReportData data = mockMultiProjectData();
+        ReportPdfExporter exporter = new ReportPdfExporter();
+
+        // 1. 渲染项目正文（页码从 1 开始）
+        String projectsHtml = ReportProjectPdfBuilder.INSTANCE.buildProjectsOnly(data, null);
+        byte[] projectsPdf = exporter.exportPdfFromHtml(projectsHtml);
+        Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(projectsPdf);
+
+        assertFalse(pageMap.isEmpty(), "应提取到项目页码");
+        assertEquals(Integer.valueOf(1), pageMap.get(1), "项目 1 在项目正文 PDF 中应从第 1 页开始");
+
+        // 2. 渲染封面（使用项目正文的真实页码）
+        String coverHtml = ReportProjectPdfBuilder.INSTANCE.buildCoverOnly(data, pageMap);
+        byte[] coverPdf = exporter.exportPdfFromHtml(coverHtml);
+
+        // 3. 合并封面 + 项目正文
+        byte[] mergedPdf = PdfMerger.merge(coverPdf, projectsPdf);
+        assertTrue(mergedPdf.length > 0, "合并后的 PDF 应有内容");
+
+        // 4. 验证合并后总页数 = 封面页数 + 项目正文页数
+        try (PDDocument doc = PDDocument.load(mergedPdf);
+             PDDocument coverDoc = PDDocument.load(coverPdf);
+             PDDocument projectDoc = PDDocument.load(projectsPdf)) {
+            int totalPages = doc.getNumberOfPages();
+            int coverPages = coverDoc.getNumberOfPages();
+            int projectPages = projectDoc.getNumberOfPages();
+            assertEquals(coverPages + projectPages, totalPages,
+                    "合并后页数应等于封面页数 + 项目正文页数");
+            System.out.println("✅ 合并 PDF: 封面 " + coverPages + " 页 + 项目 " + projectPages
+                    + " 页 = 共 " + totalPages + " 页");
+        }
     }
 
     private ProjectReportData mockMultiProjectData() {

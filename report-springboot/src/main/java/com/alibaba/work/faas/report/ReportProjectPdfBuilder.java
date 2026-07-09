@@ -43,6 +43,13 @@ public class ReportProjectPdfBuilder {
     }
 
     public String build(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
+        return buildFull(data, pageNumberMap);
+    }
+
+    /**
+     * 生成完整项目报告 HTML（封面 + 项目，单文档模式）。
+     */
+    public String buildFull(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
         StringBuilder html = new StringBuilder(16384);
         String title = data.isMultiProject()
                 ? "全项目汇总报告"
@@ -55,6 +62,57 @@ public class ReportProjectPdfBuilder {
             .append("</head>\n<body>\n")
             .append("<div class=\"container\">\n")
             .append(buildCoverPage(data, pageNumberMap));
+
+        for (int i = 0; i < data.getProjectReports().size(); i++) {
+            PerProjectReport pr = data.getProjectReports().get(i);
+            html.append("<div class=\"project-block\" id=\"project-")
+                .append(i + 1).append("\">\n")
+                .append(buildProjectBlock(pr, data, i + 1))
+                .append("</div>\n");
+        }
+
+        html.append(buildFooter())
+            .append("</div>\n</body>\n</html>");
+        return html.toString();
+    }
+
+    /**
+     * 生成仅包含封面和目录的 HTML（用于与项目正文 PDF 合并）。
+     */
+    public String buildCoverOnly(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
+        StringBuilder html = new StringBuilder(8192);
+        String title = data.isMultiProject()
+                ? "全项目汇总报告"
+                : "项目报告";
+        html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n")
+            .append("<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"zh-CN\">\n<head>\n")
+            .append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\n")
+            .append("<title>").append(title).append(" - 封面</title>\n")
+            .append("<style type=\"text/css\">\n").append(PDF_CSS).append("</style>\n")
+            .append("</head>\n<body>\n")
+            .append("<div class=\"container\">\n")
+            .append(buildCoverPage(data, pageNumberMap))
+            .append(buildFooter())
+            .append("</div>\n</body>\n</html>");
+        return html.toString();
+    }
+
+    /**
+     * 生成仅包含项目正文的 HTML（用于与封面 PDF 合并，页码从 1 开始）。
+     */
+    public String buildProjectsOnly(ProjectReportData data, Map<Integer, Integer> pageNumberMap) {
+        StringBuilder html = new StringBuilder(16384);
+        String title = data.isMultiProject()
+                ? "全项目汇总报告"
+                : "项目报告";
+        html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n")
+            .append("<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"zh-CN\">\n<head>\n")
+            .append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\n")
+            .append("<title>").append(title).append(" - 项目正文</title>\n")
+            .append("<style type=\"text/css\">\n").append(PDF_CSS).append("</style>\n")
+            .append("</head>\n<body>\n")
+            .append("<div class=\"container\">\n")
+            .append("<a id=\"toc\" style=\"height:0; font-size:0; line-height:0; display:block;\"></a>\n");
 
         for (int i = 0; i < data.getProjectReports().size(); i++) {
             PerProjectReport pr = data.getProjectReports().get(i);
