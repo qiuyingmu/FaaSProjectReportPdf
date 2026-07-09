@@ -3,7 +3,6 @@ package com.alibaba.work.faas.service;
 import com.alibaba.work.faas.model.entity.ScheduleTaskEntity;
 import com.alibaba.work.faas.repository.ScheduleTaskRepository;
 import com.alibaba.work.faas.schedule.ScheduleTask;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,8 +18,11 @@ import java.util.stream.Collectors;
 @Service
 public class ScheduleTaskService {
 
-    @Autowired
-    private ScheduleTaskRepository repository;
+    private final ScheduleTaskRepository repository;
+
+    public ScheduleTaskService(ScheduleTaskRepository repository) {
+        this.repository = repository;
+    }
 
     public List<ScheduleTask> findAll() {
         return repository.findAll().stream()

@@ -46,13 +46,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiResponse<Map<String, Object>> handleException(Exception e, HttpServletRequest request) {
+    public ApiResponse<Void> handleException(Exception e, HttpServletRequest request) {
         log.error("服务器内部错误: {} {}", request.getMethod(), request.getRequestURI(), e);
-        Map<String, Object> detail = new LinkedHashMap<>();
-        detail.put("path", request.getRequestURI());
-        detail.put("method", request.getMethod());
-        return ApiResponse.<Map<String, Object>>serverError("服务器内部错误")
-                .withField("error", e.getClass().getSimpleName())
-                .withField("detail", detail);
+        return ApiResponse.serverError("服务器内部错误");
     }
 }

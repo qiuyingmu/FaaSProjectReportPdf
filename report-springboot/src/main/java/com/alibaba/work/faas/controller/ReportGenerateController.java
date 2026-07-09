@@ -42,7 +42,7 @@ public class ReportGenerateController {
     /**
      * 手动生成合并的周期报告（平台 + 全项目）。
      */
-    @PostMapping("/generate")
+    @PostMapping(value = "/generate", consumes = "application/json")
     public Map<String, Object> generate(@RequestBody Map<String, String> body) {
         String period = body.get("period");
         Map<String, Object> result = new LinkedHashMap<>();
@@ -85,6 +85,7 @@ public class ReportGenerateController {
                 result.put("label", periodLabel);
                 result.put("reportName", combined.get("reportName"));
                 result.put("obsUrl", combined.get("obsUrl"));
+                result.put("pdfSize", combined.get("pdfSize"));
                 result.put("cost", totalCost);
                 log.info("✅ 手动生成 {} 完成，耗时 {}ms", periodLabel, totalCost);
             }

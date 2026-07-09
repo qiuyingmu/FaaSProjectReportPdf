@@ -11,3 +11,13 @@ target/
 .vscode/
 test-output/
 yida-secret.properties
+
+# 项目生成/部署文件
+*.tar.gz
+report-deploy/
+overview*.md
+
+# FaaS 遗留代码
+FAAS-*/
+pt.js
+xm.js

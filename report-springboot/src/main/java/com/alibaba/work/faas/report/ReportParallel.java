@@ -34,6 +34,25 @@ public final class ReportParallel {
     private static final Logger log = LoggerFactory.getLogger(ReportParallel.class);
 
     /**
+     * 应用关闭时优雅停止线程池。
+     * 由 Spring 容器的 {@code @PreDestroy} 回调触发。
+     */
+    public static void shutdown() {
+        log.info("[ReportParallel] 正在关闭查询线程池...");
+        EXECUTOR.shutdown();
+        try {
+            if (!EXECUTOR.awaitTermination(10, TimeUnit.SECONDS)) {
+                EXECUTOR.shutdownNow();
+                log.warn("[ReportParallel] 线程池强制关闭");
+            }
+        } catch (InterruptedException e) {
+            EXECUTOR.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        log.info("[ReportParallel] 查询线程池已关闭");
+    }
+
+    /**
      * 并行执行多个独立任务，收集结果到有序 Map。
      *
      * <p>所有任务同时提交，等待全部完成后返回。

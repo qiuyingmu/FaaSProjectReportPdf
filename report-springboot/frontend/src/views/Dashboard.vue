@@ -45,12 +45,12 @@
       </el-aside>
 
       <el-main style="background:#f0f2f5; padding:20px;">
-        <SystemOverview v-if="activeTab === 'overview'" />
-        <LogViewer v-if="activeTab === 'logs'" />
-        <OperationLogs v-if="activeTab === 'operations'" />
-        <ReportGenerator v-if="activeTab === 'generate'" />
-        <ScheduleManager v-if="activeTab === 'schedule'" />
-        <UserManager v-if="activeTab === 'users'" :currentUser="username" />
+        <SystemOverview v-show="activeTab === 'overview'" />
+        <LogViewer v-show="activeTab === 'logs'" />
+        <OperationLogs v-show="activeTab === 'operations'" />
+        <ReportGenerator v-show="activeTab === 'generate'" />
+        <ScheduleManager v-show="activeTab === 'schedule'" />
+        <UserManager v-show="activeTab === 'users'" :currentUser="username" />
       </el-main>
     </el-container>
   </el-container>
@@ -64,6 +64,7 @@ import OperationLogs from '../components/OperationLogs.vue'
 import ReportGenerator from '../components/ReportGenerator.vue'
 import ScheduleManager from '../components/ScheduleManager.vue'
 import UserManager from '../components/UserManager.vue'
+import { apiGet, apiFetch } from '../utils/api.js'
 
 export default {
   components: { SystemOverview, LogViewer, OperationLogs, ReportGenerator, ScheduleManager, UserManager, DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User },
@@ -76,17 +77,14 @@ export default {
   methods: {
     async loadUsername() {
       try {
-        const base = import.meta.env.BASE_URL
-        const res = await fetch(`${base}api/admin/session`, { credentials: 'include' })
-        const d = await res.json()
+        const d = await apiGet('/api/admin/session')
         if (d.valid) this.username = d.username
       } catch {}
     },
     async handleCommand(cmd) {
       if (cmd === 'logout') {
         try {
-          const base = import.meta.env.BASE_URL
-          await fetch(`${base}admin/logout`, { method: 'POST', credentials: 'include' })
+          await apiFetch('/admin/logout', { method: 'POST' })
         } catch {}
         this.$router.push('/login')
       }

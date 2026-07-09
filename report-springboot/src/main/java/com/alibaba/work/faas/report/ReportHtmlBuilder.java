@@ -1,7 +1,5 @@
 package com.alibaba.work.faas.report;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -203,16 +201,12 @@ public class ReportHtmlBuilder {
     // ========================================
 
     private static String nowStr() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return ReportTemplateUtil.nowStr();
     }
 
     /** HTML 转义 */
     private static String escHtml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;");
+        return ReportTemplateUtil.escHtml(s);
     }
 
 

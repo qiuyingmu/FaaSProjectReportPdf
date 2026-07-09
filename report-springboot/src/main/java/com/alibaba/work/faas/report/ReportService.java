@@ -167,7 +167,10 @@ public class ReportService {
         String xhtmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(projectData, pageNumberMap);
         byte[] pdfPass2 = exportPdfFromHtml(xhtmlPass2);
 
-        log.info("[ReportService] 项目报告渲染完成，共 {} 个项目页码，总耗时 {}ms",
+        // 注入页脚页码：封面无页码，项目正文从 1 开始
+        pdfPass2 = PdfHelper.injectPageNumbers(pdfPass2);
+
+        log.info("[ReportService] 项目报告渲染完成，共 {} 个项目，总耗时 {}ms",
                 pageNumberMap.size(), System.currentTimeMillis() - start);
         return pdfPass2;
     }
@@ -181,12 +184,13 @@ public class ReportService {
         for (Map.Entry<Integer, Integer> e : pageMap.entrySet()) {
             int index = e.getKey();
             if (index >= 1 && index <= projectCount) {
-                pageNumberMap.put(index, e.getValue());
+                // 真实 PDF 页码减 1（封面占 1 页），转为目录显示页码（从 1 开始）
+                pageNumberMap.put(index, e.getValue() - 1);
             }
         }
 
         if (!pageNumberMap.isEmpty()) {
-            log.info("[ReportService] 从 PDF 提取到 {} 个项目页码", pageNumberMap.size());
+            log.info("[ReportService] 从 PDF 提取到 {} 个项目页码（偏移 -1）", pageNumberMap.size());
         }
 
         return pageNumberMap;
@@ -196,13 +200,13 @@ public class ReportService {
      * 按文档结构推算项目起始页码（fallback）。
      *
      * <p>封面占第 1 页，每个项目强制从新页开始，
-     * 因此项目 i 在单文档中的页码为 i + 1。</p>
+     * 因此项目 i 在目录中显示为 i（页码从 1 开始）。</p>
      */
     private Map<Integer, Integer> calculateStructuralPageNumbers(ProjectReportData projectData) {
         Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
         int projectCount = projectData.getProjectReports().size();
         for (int i = 1; i <= projectCount; i++) {
-            pageNumberMap.put(i, i + 1);
+            pageNumberMap.put(i, i);
         }
         log.info("[ReportService] 按结构推算 {} 个项目页码", projectCount);
         return pageNumberMap;

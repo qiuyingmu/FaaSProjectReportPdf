@@ -40,7 +40,7 @@ public class ScheduleController {
     }
 
     /** 新增定时任务 */
-    @PostMapping
+    @PostMapping(consumes = "application/json")
     public Map<String, Object> createSchedule(@RequestBody ScheduleTask task) {
         if (task.getType() == null || task.getType().isEmpty()) {
             return errorResult("任务类型不能为空");
@@ -64,7 +64,7 @@ public class ScheduleController {
     }
 
     /** 更新定时任务 */
-    @PutMapping("/{type}")
+    @PutMapping(value = "/{type}", consumes = "application/json")
     public Map<String, Object> updateSchedule(
             @PathVariable String type,
             @RequestBody ScheduleTask task) {

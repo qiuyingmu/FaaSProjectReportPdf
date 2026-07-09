@@ -5,8 +5,7 @@ import com.alibaba.work.faas.report.model.ProjectReportData.PerProjectReport;
 import com.alibaba.work.faas.report.model.ProjectReportData.SourceSection;
 import com.alibaba.work.faas.report.model.ProjectReportData.ProjectBrief;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import com.alibaba.work.faas.report.ReportConstants.SourceDef;
 import java.util.*;
 
 /**
@@ -27,15 +26,6 @@ public class ReportProjectHtmlBuilder {
 
     public static final ReportProjectHtmlBuilder INSTANCE = new ReportProjectHtmlBuilder();
     private ReportProjectHtmlBuilder() {}
-
-
-    // ========================================
-    //  数据源常量（与 xm.js srcKeys / srcNames 对应）
-    // ========================================
-
-    private static final String[] SRC_KEYS = {"docLib", "dynamic", "log", "safeLog", "station", "hazard"};
-    private static final String[] SRC_NAMES = {"资料库", "项目动态", "监理日志", "日志(安全)", "旁站记录", "安全隐患台账"};
-    private static final String[] SRC_COLORS = {"#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6"};
 
 
     // ========================================
@@ -86,8 +76,8 @@ public class ReportProjectHtmlBuilder {
             + "  <div class=\"header-badge\">" + badge + "</div>\n"
             + "  <h1>" + subtitle + "</h1>\n"
             + "  <div class=\"subtitle\">报告生成时间：" + nowStr()
-            + " \uFF5C 统计范围：" + data.getDateStart() + " ~ " + data.getDateEnd()
-            + (data.isMultiProject() ? " \uFF5C 共 " + data.getProjectCount() + " 个项目" : "")
+            + " ｜ 统计范围：" + data.getDateStart() + " ~ " + data.getDateEnd()
+            + (data.isMultiProject() ? " ｜ 共 " + data.getProjectCount() + " 个项目" : "")
             + "</div>\n"
             + "</div>\n";
     }
@@ -169,7 +159,7 @@ public class ReportProjectHtmlBuilder {
     // ========================================
 
     private String buildStats(List<SourceSection> sources, ProjectReportData data) {
-        // 按 SRC_KEYS 顺序查找对应的统计数
+        // 按 ReportConstants.SOURCES 顺序查找对应的统计数
         Map<String, SourceSection> srcMap = new HashMap<>();
         for (SourceSection s : sources) {
             srcMap.put(s.getKey(), s);
@@ -180,13 +170,12 @@ public class ReportProjectHtmlBuilder {
           .append("  <div class=\"section-title\">\uD83D\uDCCA 各数据源统计</div>\n")
           .append("  <div class=\"stats-grid\">\n");
 
-        for (int i = 0; i < SRC_KEYS.length; i++) {
-            String key = SRC_KEYS[i];
-            SourceSection src = srcMap.get(key);
+        for (SourceDef sd : ReportConstants.SOURCES) {
+            SourceSection src = srcMap.get(sd.key);
             int count = (src != null) ? src.getCount() : 0;
             sb.append("    <div class=\"stat-card\">\n")
-              .append("      <div class=\"stat-label\">").append(SRC_NAMES[i]).append("</div>\n")
-              .append("      <div class=\"stat-count\" style=\"color:").append(SRC_COLORS[i]).append(";\">")
+              .append("      <div class=\"stat-label\">").append(sd.label).append("</div>\n")
+              .append("      <div class=\"stat-count\" style=\"color:").append(sd.color).append(";\">")
               .append(count).append("</div>\n")
               .append("    </div>\n");
         }
@@ -209,13 +198,13 @@ public class ReportProjectHtmlBuilder {
         StringBuilder sb = new StringBuilder();
 
         // 按 xm.js 的顺序：docLib, dynamic, log, safeLog, station, hazard
-        for (String key : SRC_KEYS) {
-            SourceSection src = srcMap.get(key);
+        for (SourceDef sd : ReportConstants.SOURCES) {
+            SourceSection src = srcMap.get(sd.key);
             if (src == null || src.getRecords().isEmpty()) {
-                sb.append(buildEmptySection(key));
+                sb.append(buildEmptySection(sd.key));
                 continue;
             }
-            sb.append(buildSourceSection(key, src));
+            sb.append(buildSourceSection(sd.key, src));
         }
 
         return sb.toString();
@@ -550,21 +539,15 @@ public class ReportProjectHtmlBuilder {
     // ========================================
 
     private static String nowStr() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return ReportTemplateUtil.nowStr();
     }
 
     private static String escHtml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;");
+        return ReportTemplateUtil.escHtml(s);
     }
 
     private static String buildFooter() {
-        return "<div class=\"footer-note\">"
-             + "本报告由系统自动生成 \uFF5C 报告生成时间：" + nowStr()
-             + "</div>\n";
+        return ReportTemplateUtil.buildFooter();
     }
 
 

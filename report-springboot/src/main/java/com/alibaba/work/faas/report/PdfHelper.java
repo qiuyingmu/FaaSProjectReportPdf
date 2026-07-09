@@ -8,7 +8,11 @@ import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDPageTree;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
@@ -17,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -186,5 +191,72 @@ public final class PdfHelper {
             log.debug("[PdfHelper] 解析 {} 失败: {}", key.getName(), e.getMessage());
         }
         return 0;
+    }
+
+
+    // ================================================================
+    //  页码注入
+    // ================================================================
+
+    /**
+     * 为 PDF 手动注入页脚页码（封面无页码，项目正文从 1 开始）。
+     *
+     * <p>OpenHTMLToPDF 不支持 {@code counter-reset: page}，无法通过 CSS
+     * 让项目部分页码从 1 开始。因此改用 PDFBox 后处理：渲染完成后遍历
+     * 每一页，在底部居中位置写入 "页码/总项目页数"。</p>
+     *
+     * @param pdfBytes 原始 PDF 字节数组
+     * @return 带页码的 PDF 字节数组
+     */
+    public static byte[] injectPageNumbers(byte[] pdfBytes) throws IOException {
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            return pdfBytes;
+        }
+
+        try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(pdfBytes))) {
+            int totalPages = doc.getNumberOfPages();
+            if (totalPages <= 1) {
+                // 只有封面页，无需页码
+                return pdfBytes;
+            }
+
+            // 项目正文页数 = 总页数 - 1（封面）
+            int projectPages = totalPages - 1;
+
+            // 使用标准 PDF Type1 字体（数字和斜杠无需中文字体）
+            PDFont font = PDType1Font.HELVETICA;
+
+            for (int i = 1; i < totalPages; i++) {
+                PDPage page = doc.getPage(i);
+                PDRectangle mediaBox = page.getMediaBox();
+                if (mediaBox == null) continue;
+
+                String pageNumStr = i + "/" + projectPages;
+
+                // 用 PDPageContentStream 在页面底部写入页码
+                try (PDPageContentStream cs = new PDPageContentStream(
+                        doc, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
+                    cs.setFont(font, 9);
+                    cs.setNonStrokingColor(153, 153, 153);
+
+                    float fontSize = 9;
+                    float stringWidth = font.getStringWidth(pageNumStr) / 1000 * fontSize;
+                    float pageWidth = mediaBox.getWidth();
+                    float x = (pageWidth - stringWidth) / 2;
+                    float y = 12; // 底部留白
+
+                    cs.beginText();
+                    cs.newLineAtOffset(x, y);
+                    cs.showText(pageNumStr);
+                    cs.endText();
+                }
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(pdfBytes.length + 4096);
+            doc.save(baos);
+            log.info("[PdfHelper] 注入页码完成: {} 页（封面无页码，项目部分 1/{})",
+                    totalPages, projectPages);
+            return baos.toByteArray();
+        }
     }
 }

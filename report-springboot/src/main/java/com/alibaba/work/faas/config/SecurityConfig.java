@@ -7,7 +7,6 @@ import com.alibaba.work.faas.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.LocalDateTime;
@@ -19,6 +18,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -48,18 +48,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
-
-    @Autowired
-    private OperationLogService operationLogService;
-
-    @Autowired
-    private UserRepository userRepository;
-
+    private final UserDetailsServiceImpl userDetailsService;
+    private final OperationLogService operationLogService;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** 暴力破解防护：记录每个 IP 的失败次数和时间 */
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService,
+                          OperationLogService operationLogService,
+                          UserRepository userRepository) {
+        this.userDetailsService = userDetailsService;
+        this.operationLogService = operationLogService;
+        this.userRepository = userRepository;
+    }
+
+    /** 暴力破解防护：记录每个 IP+Username 组合的失败次数和时间 */
     private final Map<String, LoginAttempt> loginAttempts = new ConcurrentHashMap<>();
 
     /** 5 分钟内允许 10 次失败 */
@@ -78,20 +80,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             // CORS（配置在 WebMvcConfig 中）
             .cors().and()
 
-            // 权限控制
+            // 权限控制（前后端分离，前端 SPA 管理路由）
             .authorizeRequests()
                 .antMatchers("/api/admin/session").permitAll()
                 .antMatchers("/api/admin/login").permitAll()
-                .antMatchers("/admin/login").permitAll()
-                .antMatchers("/admin/**").hasRole("ADMIN")
                 .antMatchers("/actuator/**").hasRole("ADMIN")
                 .antMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().permitAll()
                 .and()
 
-            // JSON 登录接口 —— 默认使用 loginPage 的 URL 处理 POST
+            // 登录处理（JSON 响应，不自带页面跳转）
             .formLogin()
-                .loginPage("/admin/login")
+                .loginProcessingUrl("/admin/login")
                 .usernameParameter("username")
                 .passwordParameter("password")
                 .successHandler(jsonAuthSuccessHandler())
@@ -116,9 +116,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .and()
 
-            // CSRF 豁免
+            // CSRF 保护（使用 CookieCsrfTokenRepository，前端 JS 可读取 XSRF-TOKEN）
             .csrf()
-                .ignoringAntMatchers("/api/**")
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .ignoringAntMatchers("/admin/login")
                 .ignoringAntMatchers("/admin/logout");
     }
@@ -133,8 +133,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             response.setContentType("application/json;charset=utf-8");
             response.setStatus(HttpServletResponse.SC_OK);
 
-            // 清除失败记录
-            loginAttempts.remove(getClientIp(request));
+            // 清除失败记录（IP+Username 联合键）
+            loginAttempts.remove(getClientIp(request) + ":" + authentication.getName());
 
             // 记录登录时间
             userRepository.findByUsername(authentication.getName())
@@ -193,7 +193,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private String checkBruteForce(String ip, String username) {
         long now = System.currentTimeMillis();
-        loginAttempts.compute(ip, (key, attempt) -> {
+        // 使用 IP+Username 联合键，防止攻击者换 IP 绕过
+        String key = ip + ":" + (username != null ? username : "unknown");
+        loginAttempts.compute(key, (k, attempt) -> {
             if (attempt == null || (now - attempt.firstAttempt) > BLOCK_DURATION_MS) {
                 return new LoginAttempt(now, 1);
             }
@@ -201,7 +203,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             return attempt;
         });
 
-        LoginAttempt attempt = loginAttempts.get(ip);
+        LoginAttempt attempt = loginAttempts.get(key);
         boolean blocked = attempt != null && attempt.count > MAX_ATTEMPTS;
 
         // 记录审计日志

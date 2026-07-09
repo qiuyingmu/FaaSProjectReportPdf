@@ -5,8 +5,7 @@ import com.alibaba.work.faas.report.model.ProjectReportData.PerProjectReport;
 import com.alibaba.work.faas.report.model.ProjectReportData.SourceSection;
 import com.alibaba.work.faas.report.model.ProjectReportData.ProjectBrief;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import com.alibaba.work.faas.report.ReportConstants.SourceDef;
 import java.util.*;
 
 /**
@@ -23,15 +22,6 @@ public class ReportProjectPdfBuilder {
 
     public static final ReportProjectPdfBuilder INSTANCE = new ReportProjectPdfBuilder();
     private ReportProjectPdfBuilder() {}
-
-
-    // ========================================
-    //  数据源常量
-    // ========================================
-
-    private static final String[] SRC_KEYS = {"docLib", "dynamic", "log", "safeLog", "station", "hazard"};
-    private static final String[] SRC_NAMES = {"资料库", "项目动态", "监理日志", "日志(安全)", "旁站记录", "安全隐患台账"};
-    private static final String[] SRC_COLORS = {"#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6"};
 
 
     // ========================================
@@ -228,7 +218,6 @@ public class ReportProjectPdfBuilder {
           .append("    <span class=\"page-marker\">__PROJECT_PAGE_").append(index).append("__</span>\n")
           .append("    <span class=\"project-index\">").append(index).append("</span>\n")
           .append("    <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
-          .append("    <span class=\"project-name-title\">").append(escHtml(brief.getName())).append("</span>\n")
           .append("    <span class=\"badge\">").append(pr.getTotalRecords()).append(" 条</span>\n")
           .append("  </a>\n")
           .append("  <a href=\"#toc\" class=\"back-to-toc\">返回目录</a>\n")
@@ -300,11 +289,11 @@ public class ReportProjectPdfBuilder {
           .append("    <table class=\"stats-table\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n")
           .append("      <tr>\n");
 
-        for (int i = 0; i < SRC_KEYS.length; i++) {
-            int count = countMap.getOrDefault(SRC_KEYS[i], 0);
+        for (SourceDef sd : ReportConstants.SOURCES) {
+            int count = countMap.getOrDefault(sd.key, 0);
             sb.append("        <td class=\"stat-card\">\n")
-              .append("          <div class=\"stat-label\">").append(SRC_NAMES[i]).append("</div>\n")
-              .append("          <div class=\"stat-count\" style=\"color:").append(SRC_COLORS[i]).append(";\">")
+              .append("          <div class=\"stat-label\">").append(sd.label).append("</div>\n")
+              .append("          <div class=\"stat-count\" style=\"color:").append(sd.color).append(";\">")
               .append(count).append("</div>\n")
               .append("        </td>\n");
         }
@@ -329,7 +318,8 @@ public class ReportProjectPdfBuilder {
 
         StringBuilder sb = new StringBuilder();
 
-        for (String key : SRC_KEYS) {
+        for (SourceDef sd : ReportConstants.SOURCES) {
+            String key = sd.key;
             SourceSection src = srcMap.get(key);
             if (src == null || src.getRecords().isEmpty()) {
                 sb.append(buildEmptySection(key));
@@ -620,16 +610,15 @@ public class ReportProjectPdfBuilder {
     // ========================================
 
     private static String nowStr() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return ReportTemplateUtil.nowStr();
     }
 
     private static String escHtml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+        return ReportTemplateUtil.escHtml(s);
     }
 
     private static String buildFooter() {
-        return "<div class=\"footer-note\">本报告由系统自动生成 | 报告生成时间：" + nowStr() + "</div>\n";
+        return ReportTemplateUtil.buildFooter();
     }
 
 
@@ -892,17 +881,8 @@ public class ReportProjectPdfBuilder {
         + "  padding: 16px 0 8px;\n"
         + "}\n"
 
-        // 打印
+        // 打印（无自动页码，改为 PDFBox 后处理注入）
         + "@page {\n"
         + "  margin: 12mm 15mm 18mm 15mm;\n"
-        + "  @bottom-center {\n"
-        + "    content: counter(page) \"/\" counter(pages);\n"
-        + "    font-size: 9px;\n"
-        + "    color: #999;\n"
-        + "    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;\n"
-        + "  }\n"
-        + "}\n"
-        + "@page:first {\n"
-        + "  @bottom-center { content: none; }\n"
         + "}\n";
 }

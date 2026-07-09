@@ -34,9 +34,8 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(html.contains("__PROJECT_PAGE_2__"), "应包含项目2页码标记");
         assertTrue(html.contains("project-block { page-break-before: always; }"), "项目应强制分页");
         assertTrue(html.contains("cover-page { page-break-after: always; }"), "封面应强制分页");
-        assertTrue(html.contains("@page:first"), "应隐藏封面页脚");
-        assertTrue(html.contains("content: counter(page)"), "应包含页码 CSS");
-        assertTrue(html.contains("counter(pages)"), "应包含总页数 CSS");
+        assertFalse(html.contains("content: counter(page)"), "页码由 PDFBox 后处理注入，不在 CSS 中");
+        assertFalse(html.contains("counter(pages)"), "总页数由 PDFBox 计算，不在 CSS 中");
     }
 
     @Test
@@ -85,15 +84,15 @@ public class ReportProjectPdfBuilderTest {
     void build_shouldRenderTocWithInjectedPageNumbers(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
 
-        // 模拟真实跨页场景：项目 1 = 第 2 页, 项目 2 = 第 3 页
+        // pageNumberMap 存储目录显示页码（从 1 开始）
         Map<Integer, Integer> pageNumberMap = new java.util.LinkedHashMap<>();
-        pageNumberMap.put(1, 2);
-        pageNumberMap.put(2, 3);
+        pageNumberMap.put(1, 1);
+        pageNumberMap.put(2, 2);
 
         String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(data, pageNumberMap);
 
-        assertTrue(htmlPass2.contains(">2<"), "目录中项目 1 的页码应为 2");
-        assertTrue(htmlPass2.contains(">3<"), "目录中项目 2 的页码应为 3");
+        assertTrue(htmlPass2.contains(">1<"), "目录中项目 1 的页码应为 1");
+        assertTrue(htmlPass2.contains(">2<"), "目录中项目 2 的页码应为 2");
         assertFalse(htmlPass2.contains(">-<"), "目录中不应出现未解析的 -");
     }
 
@@ -116,6 +115,32 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(pdfFinal.length > 0, "最终 PDF 应有内容");
         assertTrue(pageMap.containsKey(1) && pageMap.containsKey(2), "应提取到所有项目页码");
         System.out.println("✅ 单文档 PDF 生成成功，页码映射: " + pageMap);
+    }
+
+    @Test
+    void injectPageNumbers_shouldStartAtOneAfterCover(@TempDir Path tempDir) throws Exception {
+        ProjectReportData data = mockMultiProjectData();
+        ReportPdfExporter exporter = new ReportPdfExporter();
+
+        // 生成项目 PDF（封面 + 2 个项目）
+        String html = ReportProjectPdfBuilder.INSTANCE.build(data, null);
+        byte[] pdf = exporter.exportPdfFromHtml(html);
+
+        // 注入 PDFBox 页码
+        byte[] pdfWithPageNumbers = PdfHelper.injectPageNumbers(pdf);
+        assertTrue(pdfWithPageNumbers.length > pdf.length, "注入页码后 PDF 应变大");
+
+        // 验证总页数 = 封面(1) + 项目(≥2)
+        try (PDDocument doc = PDDocument.load(new java.io.ByteArrayInputStream(pdfWithPageNumbers))) {
+            int totalPages = doc.getNumberOfPages();
+            assertTrue(totalPages >= 3, "至少 3 页（封面 + 2 个项目）");
+            System.out.println("✅ 页码注入后共 " + totalPages + " 页");
+        }
+
+        // 将示例 PDF 写入临时目录查看
+        Path out = tempDir.resolve("project-report-with-pagenum.pdf");
+        Files.write(out, pdfWithPageNumbers);
+        System.out.println("✅ 带页码 PDF 已生成: " + out.toAbsolutePath());
     }
 
     @Test

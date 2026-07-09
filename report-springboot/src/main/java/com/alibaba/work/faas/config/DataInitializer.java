@@ -7,7 +7,6 @@ import com.alibaba.work.faas.repository.UserRepository;
 import com.alibaba.work.faas.schedule.DynamicScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -24,23 +23,32 @@ public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ScheduleTaskRepository scheduleTaskRepository;
+    private final DynamicScheduler dynamicScheduler;
 
-    @Autowired
-    private ScheduleTaskRepository scheduleTaskRepository;
+    private final String adminUsername;
+    private final String adminPassword;
 
-    @Autowired
-    private DynamicScheduler dynamicScheduler;
-
-    @Value("${report.admin.username:admin}")
-    private String adminUsername;
-
-    @Value("${report.admin.password:admin123}")
-    private String adminPassword;
+    public DataInitializer(UserRepository userRepository,
+                           ScheduleTaskRepository scheduleTaskRepository,
+                           DynamicScheduler dynamicScheduler,
+                           @Value("${report.admin.username:admin}") String adminUsername,
+                           @Value("${report.admin.password:admin123}") String adminPassword) {
+        this.userRepository = userRepository;
+        this.scheduleTaskRepository = scheduleTaskRepository;
+        this.dynamicScheduler = dynamicScheduler;
+        this.adminUsername = adminUsername;
+        this.adminPassword = adminPassword;
+    }
 
     @Override
     public void run(String... args) {
+        // ---- 安全：检查是否使用默认密码 ----
+        if ("admin123".equals(adminPassword)) {
+            log.warn("⚠️⚠️⚠️ 管理员密码为默认值 'admin123'！生产环境必须通过环境变量 REPORT_ADMIN_PASSWORD 或 report.admin.password 设置强密码！⚠️⚠️⚠️");
+        }
+
         // ---- 初始化管理员账号 ----
         if (!userRepository.existsByUsername(adminUsername)) {
             User admin = new User(adminUsername,

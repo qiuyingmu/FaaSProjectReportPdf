@@ -62,7 +62,7 @@ public class UserController {
     //  新增管理员
     // ========================================
 
-    @PostMapping
+    @PostMapping(consumes = "application/json")
     public ApiResponse<UserDTO> create(@RequestBody UserDTO dto, Authentication auth) {
         // 参数校验
         String username = dto.getUsername();
@@ -92,7 +92,7 @@ public class UserController {
     //  修改管理员（角色、启用状态）
     // ========================================
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = "application/json")
     public ApiResponse<UserDTO> update(@PathVariable Long id,
                                         @RequestBody UserDTO dto,
                                         Authentication auth) {
@@ -130,7 +130,7 @@ public class UserController {
     //  重置密码
     // ========================================
 
-    @PutMapping("/{id}/password")
+    @PutMapping(value = "/{id}/password", consumes = "application/json")
     public ApiResponse<Object> resetPassword(@PathVariable Long id,
                                             @RequestBody UserDTO dto,
                                             Authentication auth) {
@@ -190,10 +190,7 @@ public class UserController {
 
     /** 判断是否只剩一个启用的管理员（排除指定 id） */
     private boolean isLastActiveAdmin(Long excludeId) {
-        long activeCount = userRepository.findAll().stream()
-                .filter(u -> u.isEnabled() && !u.getId().equals(excludeId))
-                .count();
-        return activeCount == 0;
+        return userRepository.countOtherActiveAdmins(excludeId) == 0;
     }
 
     /** Entity → DTO，不暴露密码哈希 */

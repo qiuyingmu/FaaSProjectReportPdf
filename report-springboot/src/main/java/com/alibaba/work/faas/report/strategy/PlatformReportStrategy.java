@@ -4,9 +4,6 @@ import com.alibaba.work.faas.report.*;
 import com.alibaba.work.faas.report.model.ReportRequest;
 import com.alibaba.work.faas.report.model.ReportResult;
 import com.alibaba.work.faas.report.model.TimeRange;
-import com.alibaba.work.faas.service.YidaApiManager;
-import com.aliyun.dingtalkyida_2_0.models.SearchFormDatasResponseBody;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,11 +21,11 @@ public class PlatformReportStrategy implements ReportStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformReportStrategy.class);
 
-    private final YidaApiManager api;
+    private final ReportQueryService queryService;
     private final ReportPdfExporter pdfExporter;
 
-    public PlatformReportStrategy(YidaApiManager api, ReportPdfExporter pdfExporter) {
-        this.api = api;
+    public PlatformReportStrategy(ReportQueryService queryService, ReportPdfExporter pdfExporter) {
+        this.queryService = queryService;
         this.pdfExporter = pdfExporter;
     }
 
@@ -81,93 +78,42 @@ public class PlatformReportStrategy implements ReportStrategy {
 
     /**
      * 加载平台报告数据 —— 所有项目的统计概览。
-     *
-     * @param range 时间范围：week / lastWeek / month / lastMonth
-     * @return 报表数据
      */
     public ReportData loadStats(String range) throws Exception {
         ReportDateUtils.DateRange dr = ReportDateUtils.getRange(range);
         long tick = System.currentTimeMillis();
 
-        // ---- 1. 查询项目列表 ----
-        List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> rawProjects =
-                api.searchAllFormData(ReportConstants.FORM_PROJECT, null);
+        // 1. 查询所有项目
+        List<ReportQueryService.ProjectInfo> allProjects = queryService.resolveAllProjects();
+        log.info("[PlatformReportStrategy] 项目列表加载完成，{} 个项目，耗时 {}ms",
+                allProjects.size(), System.currentTimeMillis() - tick);
 
-        // 构建项目名称 → 项目行 的映射
-        Map<String, SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> projectMap = new LinkedHashMap<>();
-        if (rawProjects != null) {
-            for (SearchFormDatasResponseBody.SearchFormDatasResponseBodyData row : rawProjects) {
-                Map<String, ?> fd = row.getFormData();
-                if (fd == null) continue;
-                String name = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_NAME);
-                if (StringUtils.isBlank(name)) continue;
-                if (name.contains("测试") || name.toLowerCase().contains("test")) continue;
-                projectMap.put(name, row);
-            }
-        }
+        // 2. 并行查询 6 个数据源并按项目聚合
+        Map<String, Map<String, Integer>> sourceMatrix = queryService.loadSourceCounts(dr.start, dr.end);
 
-        log.info("[PlatformReportStrategy] 项目列表加载完成，"
-                + projectMap.size() + " 个项目，耗时 "
-                + (System.currentTimeMillis() - tick) + "ms");
-
-        // ---- 2. 并行查询 6 个数据源 + 内存聚合 ----
-        // 6 个数据源互不依赖，并行执行减少总耗时
-        Map<ReportConstants.SourceDef, Map<String, Integer>> parallelResults =
-                ReportParallel.parallelMap(
-                        ReportConstants.SOURCES,
-                        src -> {
-                            try {
-                                return loadSourceCountsBatch(src, dr.start, dr.end);
-                            } catch (Exception e) {
-                                throw new RuntimeException("查询数据源[" + src.label + "]失败: " + e.getMessage(), e);
-                            }
-                        },
-                        "平台报告-6数据源查询"
-                );
-
-        // 按 key 整理结果
-        Map<String, Map<String, Integer>> sourceMatrix = new LinkedHashMap<>();
-        for (Map.Entry<ReportConstants.SourceDef, Map<String, Integer>> entry : parallelResults.entrySet()) {
-            String key = entry.getKey().key;
-            Map<String, Integer> counts = entry.getValue();
-            sourceMatrix.put(key, counts);
-            int total = counts.values().stream().mapToInt(Integer::intValue).sum();
-            log.info("[PlatformReportStrategy] 数据源 [" + entry.getKey().label
-                    + "] 完成，共 " + total + " 条，涉及 " + counts.size() + " 个项目");
-        }
-
-        // ---- 3. 组装每个项目的统计数据 ----
+        // 3. 组装每个项目的统计数据
         List<ReportData.ProjectStat> projects = new ArrayList<>();
         int grandTotal = 0;
 
-        for (Map.Entry<String, SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> entry : projectMap.entrySet()) {
-            String name = entry.getKey();
-            SearchFormDatasResponseBody.SearchFormDatasResponseBodyData row = entry.getValue();
-            Map<String, ?> fd = row.getFormData();
-
-            String director = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_DIRECTOR);
-            String addr = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_ADDR);
-            String area = ReportHelper.extractDistrict(addr);
-
+        for (ReportQueryService.ProjectInfo pi : allProjects) {
             Map<String, Integer> sourceCounts = new LinkedHashMap<>();
             int projectTotal = 0;
-
             for (ReportConstants.SourceDef src : ReportConstants.SOURCES) {
                 Map<String, Integer> projectCounts = sourceMatrix.get(src.key);
-                int count = projectCounts != null ? projectCounts.getOrDefault(name, 0) : 0;
+                int count = projectCounts != null ? projectCounts.getOrDefault(pi.name, 0) : 0;
                 sourceCounts.put(src.key, count);
                 projectTotal += count;
             }
-
             projects.add(new ReportData.ProjectStat(
-                    row.getFormInstanceId(), name, director, area,
+                    pi.instId, pi.name, pi.director, pi.area,
                     sourceCounts, projectTotal));
             grandTotal += projectTotal;
         }
 
+        // ...（日志和返回与原来保持一致）
         long total = System.currentTimeMillis() - tick;
-        log.info("[PlatformReportStrategy] 报表生成完成，"
-                + projects.size() + " 个项目，总计 " + grandTotal + " 条记录，总耗时 " + total + "ms");
+        log.info("[PlatformReportStrategy] 报表生成完成，{} 个项目，总计 {} 条记录，总耗时 {}ms",
+                projects.size(), grandTotal, total);
 
         return new ReportData(
                 ReportDateUtils.rangeLabel(range),
@@ -178,30 +124,4 @@ public class PlatformReportStrategy implements ReportStrategy {
         );
     }
 
-
-    // ========================================
-    //  批量查询
-    // ========================================
-
-    /**
-     * 批量查询单个数据源在某时间范围内的记录，按项目名称内存聚合。
-     */
-    private Map<String, Integer> loadSourceCountsBatch(ReportConstants.SourceDef src,
-                                                        Date start, Date end) throws Exception {
-        String searchFieldJson = ReportHelper.buildDateOnlyFilter(src.dateField, start, end);
-
-        List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> allRecords =
-                api.searchAllFormData(src.formUuid, searchFieldJson);
-
-        Map<String, Integer> counts = new HashMap<>();
-        if (allRecords != null) {
-            for (SearchFormDatasResponseBody.SearchFormDatasResponseBodyData row : allRecords) {
-                String projectName = ReportHelper.extractField(row.getFormData(), src.personField);
-                if (projectName != null && !projectName.isEmpty()) {
-                    counts.merge(projectName, 1, Integer::sum);
-                }
-            }
-        }
-        return counts;
-    }
 }

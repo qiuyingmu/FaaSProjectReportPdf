@@ -10,7 +10,11 @@ import java.time.LocalDateTime;
  * 创建于 2026/07/08
  */
 @Entity
-@Table(name = "operation_logs")
+@Table(name = "operation_logs", indexes = {
+    @Index(name = "idx_ol_created_at", columnList = "createdAt DESC"),
+    @Index(name = "idx_ol_action_created", columnList = "action, createdAt DESC"),
+    @Index(name = "idx_ol_operator_created", columnList = "operator, createdAt DESC")
+})
 public class OperationLog {
 
     @Id

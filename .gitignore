@@ -30,6 +30,17 @@ frontend/vite.log
 # Deployment package
 report-deploy.tar.gz
 report-deploy/frontend/
+report-deploy/report-springboot-*.jar
+report-deploy/Dockerfile.backend
+report-deploy/docker-compose.yml
+
+# FaaS legacy code
+FAAS-*/
+pt.js
+xm.js
+
+# Overview/audit artifacts
+overview*.md
 
 # WorkBuddy internal
 .workbuddy/

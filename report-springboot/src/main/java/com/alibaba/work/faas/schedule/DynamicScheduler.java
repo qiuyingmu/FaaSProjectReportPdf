@@ -1,5 +1,6 @@
 package com.alibaba.work.faas.schedule;
 
+import com.alibaba.work.faas.report.ReportParallel;
 import com.alibaba.work.faas.report.ReportDateUtils;
 import com.alibaba.work.faas.report.ReportService;
 import com.alibaba.work.faas.report.async.YidaFormUpdater;
@@ -252,6 +253,8 @@ public class DynamicScheduler implements DisposableBean {
         for (String type : runningTasks.keySet()) {
             stopTask(type);
         }
+        // 关闭 ReportParallel 的查询线程池
+        ReportParallel.shutdown();
         log.info("所有定时任务已停止");
     }
 }

@@ -19,12 +19,10 @@
               {{ loading === 'weekly' ? '生成中...' : '立即生成' }}
             </el-button>
             <div v-if="result.weekly" style="margin-top:12px; font-size:12px;">
-              <el-tag v-if="result.weekly.platform" :type="result.weekly.platform.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                平台: {{ result.weekly.platform.records || result.weekly.platform.message || result.weekly.platform.status }}条
+              <el-tag type="success" size="small" style="margin:2px; cursor:pointer;" @click="openUrl(result.weekly.obsUrl)">
+                查看报告 ⏏
               </el-tag>
-              <el-tag v-if="result.weekly.project" :type="result.weekly.project.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                项目: {{ result.weekly.project.records || result.weekly.project.message || result.weekly.project.status }}条
-              </el-tag>
+              <div style="color:#909399; margin-top:4px;">{{ result.weekly.reportName }} ({{ formatSize(result.weekly.pdfSize) }})</div>
             </div>
           </el-card>
         </el-col>
@@ -38,12 +36,10 @@
               {{ loading === 'monthly' ? '生成中...' : '立即生成' }}
             </el-button>
             <div v-if="result.monthly" style="margin-top:12px; font-size:12px;">
-              <el-tag v-if="result.monthly.platform" :type="result.monthly.platform.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                平台: {{ result.monthly.platform.records || result.monthly.platform.message || result.monthly.platform.status }}条
+              <el-tag type="success" size="small" style="margin:2px; cursor:pointer;" @click="openUrl(result.monthly.obsUrl)">
+                查看报告 ⏏
               </el-tag>
-              <el-tag v-if="result.monthly.project" :type="result.monthly.project.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                项目: {{ result.monthly.project.records || result.monthly.project.message || result.monthly.project.status }}条
-              </el-tag>
+              <div style="color:#909399; margin-top:4px;">{{ result.monthly.reportName }} ({{ formatSize(result.monthly.pdfSize) }})</div>
             </div>
           </el-card>
         </el-col>
@@ -57,12 +53,10 @@
               {{ loading === 'quarterly' ? '生成中...' : '立即生成' }}
             </el-button>
             <div v-if="result.quarterly" style="margin-top:12px; font-size:12px;">
-              <el-tag v-if="result.quarterly.platform" :type="result.quarterly.platform.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                平台: {{ result.quarterly.platform.records || result.quarterly.platform.message || result.quarterly.platform.status }}
+              <el-tag type="success" size="small" style="margin:2px; cursor:pointer;" @click="openUrl(result.quarterly.obsUrl)">
+                查看报告 ⏏
               </el-tag>
-              <el-tag v-if="result.quarterly.project" :type="result.quarterly.project.status === 'success' ? 'success' : 'warning'" size="small" style="margin:2px;">
-                项目: {{ result.quarterly.project.records || result.quarterly.project.message || result.quarterly.project.status }}
-              </el-tag>
+              <div style="color:#909399; margin-top:4px;">{{ result.quarterly.reportName }} ({{ formatSize(result.quarterly.pdfSize) }})</div>
             </div>
           </el-card>
         </el-col>
@@ -85,7 +79,11 @@ export default {
       try {
         const d = await apiPost('/api/admin/reports/generate', { period }, { noRedirect: true })
         if (d.success) {
-          this.result[period] = d.details
+          this.result[period] = {
+            reportName: d.reportName,
+            obsUrl: d.obsUrl,
+            pdfSize: d.pdfSize
+          }
           ElMessage.success(`${d.label} 生成完成（${(d.cost / 1000).toFixed(1)}s）`)
         } else {
           ElMessage.error(d.message || '生成失败')
@@ -94,6 +92,13 @@ export default {
         ElMessage.error('请求失败')
       }
       this.loading = null
+    },
+    formatSize(bytes) {
+      if (!bytes || bytes <= 0) return '本地生成'
+      return (bytes / 1024).toFixed(0) + 'KB'
+    },
+    openUrl(url) {
+      if (url) window.open(url, '_blank')
     }
   }
 }

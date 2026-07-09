@@ -1,7 +1,5 @@
 package com.alibaba.work.faas.report;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -249,7 +247,7 @@ public class ReportPdfBuilder {
     // ========================================
 
     private String buildFooter() {
-        return "<div class=\"footer-note\">本报告由系统自动生成 | 报告生成时间：" + nowStr() + "</div>\n";
+        return ReportTemplateUtil.buildFooter();
     }
 
 
@@ -258,15 +256,11 @@ public class ReportPdfBuilder {
     // ========================================
 
     private static String nowStr() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return ReportTemplateUtil.nowStr();
     }
 
     private static String escHtml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;");
+        return ReportTemplateUtil.escHtml(s);
     }
 
 

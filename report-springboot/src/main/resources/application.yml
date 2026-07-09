@@ -5,17 +5,15 @@ server:
       charset: UTF-8
       enabled: true
       force: true
-    # Session 超时（15 分钟无操作自动过期）
+    # Session 超时（30 分钟无操作自动过期）
     session:
-      timeout: 15m
+      timeout: 30m
 
 spring:
   application:
     name: report-springboot
   main:
     banner-mode: console
-  thymeleaf:
-    cache: false
   mandatory-file-encoding: UTF-8
 
   # ========================================
@@ -29,7 +27,7 @@ spring:
     password:
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
   jpa:
     hibernate:
@@ -101,3 +99,18 @@ report:
   admin:
     password: ${REPORT_ADMIN_PASSWORD:admin123}
   enabled: true
+
+# ========================================
+#  开发环境（H2 Console 调试用）
+#  spring.profiles.active=dev
+# ========================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
