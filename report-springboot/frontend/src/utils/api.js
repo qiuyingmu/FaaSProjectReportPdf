@@ -8,6 +8,18 @@
  * 创建于 2026/07/08
  */
 
+const BASE_URL = import.meta.env.BASE_URL
+
+/**
+ * 将相对路径转换为带部署前缀的绝对路径。
+ * 例如：/api/admin/logs → /report/api/admin/logs（生产环境）
+ */
+function resolveUrl(url) {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const normalized = url.startsWith('/') ? url.slice(1) : url
+  return BASE_URL + normalized
+}
+
 /**
  * 发起 API 请求。
  *
@@ -20,7 +32,7 @@
 export async function apiFetch(url, options = {}) {
   const { noRedirect, ...fetchOptions } = options
 
-  const res = await fetch(url, {
+  const res = await fetch(resolveUrl(url), {
     credentials: 'include',
     ...fetchOptions,
     headers: {
@@ -33,7 +45,7 @@ export async function apiFetch(url, options = {}) {
 
   // 401 → Session 过期，自动跳转登录
   if (res.status === 401 && !noRedirect) {
-    window.location.href = '/login'
+    window.location.href = resolveUrl('/login')
     throw new Error('SESSION_EXPIRED')
   }
 

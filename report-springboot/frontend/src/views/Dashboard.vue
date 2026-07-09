@@ -76,7 +76,8 @@ export default {
   methods: {
     async loadUsername() {
       try {
-        const res = await fetch('/api/admin/session', { credentials: 'include' })
+        const base = import.meta.env.BASE_URL
+        const res = await fetch(`${base}api/admin/session`, { credentials: 'include' })
         const d = await res.json()
         if (d.valid) this.username = d.username
       } catch {}
@@ -84,7 +85,8 @@ export default {
     async handleCommand(cmd) {
       if (cmd === 'logout') {
         try {
-          await fetch('/admin/logout', { method: 'POST', credentials: 'include' })
+          const base = import.meta.env.BASE_URL
+          await fetch(`${base}admin/logout`, { method: 'POST', credentials: 'include' })
         } catch {}
         this.$router.push('/login')
       }

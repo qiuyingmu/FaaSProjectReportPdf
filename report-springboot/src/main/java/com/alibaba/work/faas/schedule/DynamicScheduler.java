@@ -60,7 +60,23 @@ public class DynamicScheduler implements DisposableBean {
 
     @PostConstruct
     public void init() {
-        // 从数据库加载定时任务配置
+        reloadTasks();
+    }
+
+    /**
+     * 从数据库重新加载任务配置。
+     * 由 DataInitializer 在首次创建默认任务后调用，也支持运行时热重载。
+     */
+    public synchronized void reloadTasks() {
+        // 先停止所有运行中的任务
+        for (ScheduledFuture<?> future : runningTasks.values()) {
+            if (future != null && !future.isCancelled()) {
+                future.cancel(false);
+            }
+        }
+        runningTasks.clear();
+        taskConfigs.clear();
+
         List<ScheduleTask> stored = scheduleTaskService.findAll();
         if (!stored.isEmpty()) {
             for (ScheduleTask t : stored) {
@@ -68,7 +84,6 @@ public class DynamicScheduler implements DisposableBean {
             }
             log.info("从数据库加载 {} 个定时任务", stored.size());
         } else {
-            // 回退到默认配置（数据库首次启动由 DataInitializer 创建）
             log.warn("数据库无定时任务配置，检查 DataInitializer 是否运行");
             return;
         }
@@ -93,6 +108,16 @@ public class DynamicScheduler implements DisposableBean {
     // ========================================
     //  任务管理
     // ========================================
+
+    /**
+     * 添加一个已持久化的新任务到调度器。
+     */
+    public synchronized void addTask(ScheduleTask task) {
+        taskConfigs.put(task.getType(), task);
+        if (task.isEnabled()) {
+            startTask(task);
+        }
+    }
 
     /**
      * 启动一个定时任务。

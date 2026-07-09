@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
 
+const base = import.meta.env.BASE_URL
+
 const routes = [
   {
     path: '/login',
@@ -13,7 +15,7 @@ const routes = [
     // 路由守卫：进入后台前检查 Session 是否有效
     beforeEnter: async (to, from, next) => {
       try {
-        const res = await fetch('/api/admin/session', { credentials: 'include' })
+        const res = await fetch(`${base}api/admin/session`, { credentials: 'include' })
         const d = await res.json()
         if (!d.valid) {
           next('/login')
@@ -28,6 +30,6 @@ const routes = [
   }
 ]
 
-const router = createRouter({ history: createWebHistory(), routes })
+const router = createRouter({ history: createWebHistory(base), routes })
 
 export default router

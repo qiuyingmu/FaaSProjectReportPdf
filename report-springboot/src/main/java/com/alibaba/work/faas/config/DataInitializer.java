@@ -4,6 +4,7 @@ import com.alibaba.work.faas.model.entity.ScheduleTaskEntity;
 import com.alibaba.work.faas.model.entity.User;
 import com.alibaba.work.faas.repository.ScheduleTaskRepository;
 import com.alibaba.work.faas.repository.UserRepository;
+import com.alibaba.work.faas.schedule.DynamicScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private ScheduleTaskRepository scheduleTaskRepository;
 
+    @Autowired
+    private DynamicScheduler dynamicScheduler;
+
     @Value("${report.admin.username:admin}")
     private String adminUsername;
 
@@ -52,6 +56,10 @@ public class DataInitializer implements CommandLineRunner {
         initTask("weekly",    "0 0 10 * * MON",       "lastWeek",    true,  "周报",  "每周一 10:00 生成上周报告");
         initTask("monthly",   "0 0 10 1 * ?",         "lastMonth",   true,  "月报",  "每月 1 日 10:00 生成上月报告");
         initTask("quarterly", "0 0 10 1 1,4,7,10 ?", "lastQuarter", true,  "季报",  "每季度首月 1 日 10:00 生成上季度报告");
+
+        // 通知调度器重载任务（DynamicScheduler @PostConstruct 可能已先运行）
+        dynamicScheduler.reloadTasks();
+        log.info("✅ 定时任务调度器已同步");
     }
 
     private void initTask(String type, String cron, String timeRangeCode, boolean enabled,

@@ -50,12 +50,12 @@ public class ReportProjectPdfBuilder {
             .append("<style type=\"text/css\">\n").append(PDF_CSS).append("</style>\n")
             .append("</head>\n<body>\n")
             .append("<div class=\"container\">\n")
-            .append(buildHeader(data));
+            .append(buildCoverPage(data));
 
         for (int i = 0; i < data.getProjectReports().size(); i++) {
             PerProjectReport pr = data.getProjectReports().get(i);
-            // 整个项目区块不分页
-            html.append("<div class=\"project-block\">\n")
+            // 每个项目都从新的一页开始
+            html.append("<div class=\"project-block\" id=\"project-").append(i + 1).append("\">\n")
                 .append(buildProjectBlock(pr, data, i + 1))
                 .append("</div>\n");
         }
@@ -63,6 +63,56 @@ public class ReportProjectPdfBuilder {
         html.append(buildFooter())
             .append("</div>\n</body>\n</html>");
         return html.toString();
+    }
+
+
+    // ========================================
+    //  封面页（全项目模式：header + 目录）
+    //  单项目模式：仅 header
+    // ========================================
+
+    private String buildCoverPage(ProjectReportData data) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div class=\"cover-page\">\n")
+          .append(buildHeader(data));
+
+        if (data.isMultiProject() && data.getProjectCount() > 0) {
+            sb.append(buildToc(data));
+        }
+
+        sb.append("</div>\n");
+        return sb.toString();
+    }
+
+
+    // ========================================
+    //  项目目录（带超链接）
+    // ========================================
+
+    private String buildToc(ProjectReportData data) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div class=\"toc\">\n")
+          .append("  <div class=\"toc-title\">项目目录</div>\n")
+          .append("  <table class=\"toc-table\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n")
+          .append("    <thead><tr><th width=\"60\">序号</th><th>项目名称</th><th width=\"120\">数据量</th></tr></thead>\n")
+          .append("    <tbody>\n");
+
+        List<PerProjectReport> projects = data.getProjectReports();
+        for (int i = 0; i < projects.size(); i++) {
+            PerProjectReport pr = projects.get(i);
+            String name = escHtml(pr.getBrief().getName());
+            int count = pr.getTotalRecords();
+            sb.append("      <tr>")
+              .append("<td>").append(i + 1).append("</td>")
+              .append("<td><a href=\"#project-").append(i + 1).append("\">").append(name).append("</a></td>")
+              .append("<td>").append(count).append(" 条</td>")
+              .append("</tr>\n");
+        }
+
+        sb.append("    </tbody>\n")
+          .append("  </table>\n")
+          .append("</div>\n");
+        return sb.toString();
     }
 
 
@@ -519,15 +569,48 @@ public class ReportProjectPdfBuilder {
         + "}\n"
         + ".container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }\n"
 
-        // 项目区块不分页
-        + ".project-block { page-break-inside: avoid; }\n"
+        // 封面页：与正文强制分页
+        + ".cover-page { page-break-after: always; }\n"
+
+        // 项目目录
+        + ".toc { margin-top: 24px; }\n"
+        + ".toc-title {\n"
+        + "  font-size: 16px; font-weight: 700;\n"
+        + "  color: #1a1a2e;\n"
+        + "  margin-bottom: 12px;\n"
+        + "  padding-bottom: 6px;\n"
+        + "  border-bottom: 2px solid #eef2ff;\n"
+        + "}\n"
+        + ".toc-table { border-collapse: collapse; font-size: 12px; }\n"
+        + ".toc-table thead th {\n"
+        + "  padding: 8px 10px;\n"
+        + "  text-align: left;\n"
+        + "  background: #f8f9fb;\n"
+        + "  border-bottom: 1px solid #e8e8e8;\n"
+        + "  color: #595959;\n"
+        + "  font-weight: 600;\n"
+        + "}\n"
+        + ".toc-table tbody td {\n"
+        + "  padding: 8px 10px;\n"
+        + "  border-bottom: 1px dashed #e8e8e8;\n"
+        + "  vertical-align: middle;\n"
+        + "}\n"
+        + ".toc-table a {\n"
+        + "  color: #2563eb;\n"
+        + "  text-decoration: none;\n"
+        + "  font-weight: 500;\n"
+        + "}\n"
+        + ".toc-table a:hover { text-decoration: underline; }\n"
+
+        // 项目区块：每个项目从新页开始
+        + ".project-block { page-break-before: always; }\n"
 
         // Header（深色底色替代渐变）
         + ".report-header {\n"
         + "  background-color: #1a1a2e;\n"
-        + "  padding: 24px 28px;\n"
+        + "  padding: 20px 24px;\n"
         + "  color: #fff;\n"
-        + "  margin-bottom: 20px;\n"
+        + "  margin-bottom: 0;\n"
         + "  border-radius: 14px;\n"
         + "}\n"
         + ".report-header h1 {\n"
@@ -550,19 +633,19 @@ public class ReportProjectPdfBuilder {
         + "}\n"
 
         // 项目序号标题栏
-        + ".project-title-bar { margin-bottom: 10px; margin-top: 18px; }\n"
+        + ".project-title-bar { margin-bottom: 8px; margin-top: 6px; }\n"
         + ".project-index {\n"
         + "  display: inline-block;\n"
-        + "  width: 26px; height: 26px; line-height: 26px;\n"
+        + "  width: 24px; height: 24px; line-height: 24px;\n"
         + "  background-color: #2563eb;\n"
         + "  color: #fff;\n"
-        + "  font-size: 13px; font-weight: 700;\n"
+        + "  font-size: 12px; font-weight: 700;\n"
         + "  text-align: center;\n"
         + "  vertical-align: middle;\n"
         + "  border-radius: 6px;\n"
         + "}\n"
         + ".project-name-title {\n"
-        + "  font-size: 16px;\n"
+        + "  font-size: 15px;\n"
         + "  font-weight: 700;\n"
         + "  color: #1a1a2e;\n"
         + "  padding-left: 6px;\n"
@@ -571,17 +654,17 @@ public class ReportProjectPdfBuilder {
         // Section card（白卡片）
         + ".section-card {\n"
         + "  background: #fff;\n"
-        + "  margin-bottom: 14px;\n"
-        + "  padding: 16px 20px;\n"
+        + "  margin-bottom: 10px;\n"
+        + "  padding: 12px 16px;\n"
         + "  border: 1px solid #e8e8e8;\n"
         + "  border-radius: 10px;\n"
         + "}\n"
         + ".section-title {\n"
-        + "  font-size: 15px;\n"
+        + "  font-size: 14px;\n"
         + "  font-weight: 700;\n"
         + "  color: #1a1a2e;\n"
-        + "  margin-bottom: 10px;\n"
-        + "  padding-bottom: 6px;\n"
+        + "  margin-bottom: 8px;\n"
+        + "  padding-bottom: 4px;\n"
         + "  border-bottom: 2px solid #eef2ff;\n"
         + "}\n"
 
@@ -624,38 +707,37 @@ public class ReportProjectPdfBuilder {
         + ".stat-label { font-size: 11px; color: #8c8c8c; margin-bottom: 4px; }\n"
         + ".stat-count { font-size: 18px; font-weight: 700; }\n"
 
-        // 数据源区块
+        // 数据源区块（允许自然分页，避免空白）
         + ".source-section {\n"
         + "  background: #fff;\n"
-        + "  margin-bottom: 10px;\n"
+        + "  margin-bottom: 8px;\n"
         + "  border: 1px solid #e8e8e8;\n"
-        + "  page-break-inside: avoid;\n"
         + "  border-radius: 10px;\n"
         + "}\n"
         + ".source-header {\n"
-        + "  padding: 10px 16px;\n"
+        + "  padding: 8px 12px;\n"
         + "  border-bottom: 1px solid #f0f0f0;\n"
         + "}\n"
         + ".source-header-left {\n"
         + "  font-weight: 700;\n"
-        + "  font-size: 14px;\n"
+        + "  font-size: 13px;\n"
         + "  color: #1a1a2e;\n"
         + "}\n"
         + ".section-content {\n"
-        + "  padding: 10px 16px;\n"
+        + "  padding: 8px 12px;\n"
         + "}\n"
 
         // 资料库子分类
         + ".sub-section {\n"
-        + "  margin-bottom: 12px;\n"
+        + "  margin-bottom: 8px;\n"
         + "}\n"
         + ".sub-section:last-child { margin-bottom: 0; }\n"
         + ".sub-title {\n"
         + "  font-size: 12px;\n"
         + "  font-weight: 600;\n"
         + "  color: #4f46e5;\n"
-        + "  margin-bottom: 6px;\n"
-        + "  padding-bottom: 3px;\n"
+        + "  margin-bottom: 4px;\n"
+        + "  padding-bottom: 2px;\n"
         + "  border-bottom: 1px dashed #e8e8e8;\n"
         + "}\n"
 

@@ -35,8 +35,9 @@ export default {
         const form = new URLSearchParams()
         form.append('username', this.username)
         form.append('password', this.password)
+        const base = import.meta.env.BASE_URL
 
-        const res = await fetch('/admin/login', {
+        const res = await fetch(`${base}admin/login`, {
           method: 'POST',
           credentials: 'include',
           body: form,

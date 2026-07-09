@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════
+#  运营报告系统 Docker Compose
+#  用法：docker compose up -d
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ======================== PostgreSQL 数据库 ========================
+  db:
+    image: postgres:15
+    container_name: report-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: report
+      POSTGRES_USER: report
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Report@2026}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U report -d report"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - report-net
+
+  # ======================== Spring Boot 后端 ========================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: report-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # 生产环境 Profile
+      SPRING_PROFILES_ACTIVE: production
+      # PostgreSQL 数据库连接
+      DB_URL: jdbc:postgresql://db:5432/report
+      DB_DRIVER: org.postgresql.Driver
+      DB_USERNAME: report
+      DB_PASSWORD: ${DB_PASSWORD:-Report@2026}
+      # Session 超时
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-30m}
+      # 管理员密码
+      REPORT_ADMIN_PASSWORD: ${REPORT_ADMIN_PASSWORD}
+      # CORS 允许的前端域名
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://realtimevideo.jgjl.cn}
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8082:8080"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - report-net
+
+volumes:
+  pg_data:
+
+networks:
+  report-net:
+    name: report-backend

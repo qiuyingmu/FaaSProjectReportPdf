@@ -22,8 +22,17 @@ yida-secret.properties
 
 # Node modules
 frontend/node_modules/
+report-springboot/frontend/node_modules/
 frontend/dist/
+report-springboot/frontend/dist/
 frontend/vite.log
+
+# Deployment package
+report-deploy.tar.gz
+report-deploy/frontend/
+
+# WorkBuddy internal
+.workbuddy/
 
 # Runtime data
 data/

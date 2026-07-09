@@ -53,9 +53,7 @@ public class ScheduleController {
         }
 
         ScheduleTask saved = scheduleTaskService.save(task);
-        if (saved.isEnabled()) {
-            dynamicScheduler.startTask(saved);
-        }
+        dynamicScheduler.addTask(saved);
         operationLogService.log("admin", "SCHEDULE_CREATE",
                 "新增任务 " + task.getType() + " cron=" + task.getCron(), "SUCCESS", null);
 

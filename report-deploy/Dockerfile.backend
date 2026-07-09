@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════
+#  运营报告系统 后端 Dockerfile
+#  使用预编译 JAR（在本地 mvn package 生成）
+# ═══════════════════════════════════════════════════════════
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+# 从上下文复制预编译的 JAR
+COPY report-springboot-1.0.0.jar app.jar
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -sf http://localhost:8080/actuator/health || exit 1
+
+# 日志目录
+VOLUME /app/logs
+
+EXPOSE 8080
+
+ENV SPRING_PROFILES_ACTIVE=production
+
+CMD ["java", \
+     "-Dfile.encoding=UTF-8", \
+     "-jar", "app.jar", \
+     "--server.port=8080"]
