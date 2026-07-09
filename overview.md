@@ -1,24 +1,39 @@
-# 全项目汇总报告 PDF 增强已开发完成 ✅
+# 周期报告合并功能已完成 ✅
 
-## GitHub 分支
-`develop` 分支已推送至：https://github.com/qiuyingmu/FaaSProjectReportPdf/tree/develop
+**develop 分支：** https://github.com/qiuyingmu/FaaSProjectReportPdf/tree/develop
 
-## 新增功能（PDF）
-1. **封面页**：原报告头图 + 项目清单目录
-2. **目录超链接**：点击目录中的项目名称，PDF 内跳转到对应项目内容
-3. **项目分页**：每个项目都从新的一页开始，目录页后第一个项目不会与目录同页
-4. **紧凑布局**：减少卡片/表格间距，允许内容自然跨页，降低项目内部空白
+## 变更说明
 
-## 主要改动文件
-- `report-springboot/src/main/java/com/alibaba/work/faas/report/ReportProjectPdfBuilder.java`
-- `report-springboot/src/test/java/com/alibaba/work/faas/report/ReportProjectPdfBuilderTest.java`
+### 1. 报告类型变更
+- 不再区分"平台报告"和"全项目报告"类型
+- 改为按周期区分：**周报**、**月报**、**季报**（后续可扩展半年报/年报）
+- 新增 `ReportPeriod.java` 枚举
 
-## 单元测试
-```bash
-cd report-springboot
-mvn test -Dtest=ReportProjectPdfBuilderTest
-```
-测试结果：2/2 通过，示例 PDF 成功生成。
+### 2. 合并报告生成
+每次任务执行只生成 **1 份 PDF**，包含：
+- **平台报告部分**（前段，无页码）
+- 分页符
+- **全项目报告部分**（后段，有页码 1/N）
+- 两部分通过 PDFBox 合并
 
-## 部署包
-`report-deploy.tar.gz`（90MB）已重新构建，包含新版后端 JAR 和前端 dist。
+### 3. 页码
+- 全项目报告页码格式：`1/17`（当前页/总页数）
+- 显示在页面底部中间
+- 平台报告部分无页码
+
+### 4. 报告命名格式
+- PDF 文件名：`运营报告-周报-6月第1周-(2026-06-01 ~ 2026-06-07)-xxxx.pdf`
+- 宜搭表单名称：`运营报告-周报-6月第1周-(2026-06-01 ~ 2026-06-07)`（不含后缀）
+- 宜搭 `radioField_mr8y19k0`（运营报告类型）：`周报` / `月报` / `季报`
+
+### 5. 主要改动文件
+| 文件 | 改动类型 | 说明 |
+|------|---------|------|
+| `ReportPeriod.java` | **新增** | 周期枚举 |
+| `PdfMerger.java` | **新增** | PDFBox 合并工具 |
+| `DynamicScheduler.java` | **修改** | 合并报告生成流程 |
+| `ReportProjectPdfBuilder.java` | **修改** | 加入页码 CSS |
+| `YidaFormUpdater.java` | **修改** | 适配新命名 |
+
+## 部署
+`report-deploy.tar.gz`（90MB）已重建，包含新后端 JAR。

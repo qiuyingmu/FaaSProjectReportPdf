@@ -1,10 +1,13 @@
 package com.alibaba.work.faas.report;
 
+import com.alibaba.work.faas.report.async.YidaFormUpdater;
 import com.alibaba.work.faas.report.model.ReportRequest;
 import com.alibaba.work.faas.report.model.ReportResult;
 import com.alibaba.work.faas.report.model.ReportType;
 import com.alibaba.work.faas.report.model.TimeRange;
 import com.alibaba.work.faas.report.strategy.PlatformReportStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -22,13 +25,18 @@ import java.util.*;
 @Service
 public class ReportService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportService.class);
+
     private final ReportStrategyFactory factory;
     private final PlatformReportStrategy platformStrategy;
+    private final YidaFormUpdater formUpdater;
 
     public ReportService(ReportStrategyFactory factory,
-                          PlatformReportStrategy platformStrategy) {
+                          PlatformReportStrategy platformStrategy,
+                          YidaFormUpdater formUpdater) {
         this.factory = factory;
         this.platformStrategy = platformStrategy;
+        this.formUpdater = formUpdater;
     }
 
 
@@ -46,6 +54,86 @@ public class ReportService {
      */
     public List<ReportResult> generate(ReportRequest request) throws Exception {
         return factory.execute(request);
+    }
+
+
+    // ========================================
+    //  合并周期报告（周报/月报/季报）
+    //  生成一份 PDF：平台报告（无页码）+ 全项目报告（有页码 1/N）
+    // ========================================
+
+    /**
+     * 生成合并的周期报告（平台 + 全项目合并在一个 PDF 中）。
+     *
+     * @param tr            时间范围
+     * @param periodLabel   周期标签（周报/月报/季报）
+     * @param rangeLabel    范围标签（如 "6月第1周"）
+     * @param dateDisplay   日期显示（如 "2026-06-01 ~ 2026-06-07"）
+     * @return 合并后的 PDF 字节数组和 OBS 信息；如果总无数据则返回 null
+     */
+    public Map<String, Object> generateCombinedPeriodReport(TimeRange tr,
+                                                              String periodLabel,
+                                                              String rangeLabel,
+                                                              String dateDisplay) throws Exception {
+        String shortCode = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        String reportBaseName = "运营报告-" + periodLabel + "-" + rangeLabel
+                + "-(" + dateDisplay + ")";
+
+        log.info("▶ 生成合并报告: {}", reportBaseName);
+
+        // 1. 生成平台报告数据
+        ReportRequest platRequest = new ReportRequest(
+                ReportType.PLATFORM, Collections.singletonList(tr), null, null);
+        List<ReportResult> platResults = generate(platRequest);
+        byte[] platformPdf = (platResults != null && !platResults.isEmpty())
+                ? platResults.get(0).getPdfBytes() : null;
+
+        // 2. 生成全项目报告数据
+        ReportRequest projRequest = new ReportRequest(
+                ReportType.PROJECT, Collections.singletonList(tr), null, null);
+        List<ReportResult> projResults = generate(projRequest);
+        byte[] projectPdf = (projResults != null && !projResults.isEmpty())
+                ? projResults.get(0).getPdfBytes() : null;
+
+        if (platformPdf == null && projectPdf == null) {
+            log.warn("⚠ 平台报告和项目报告均无数据，跳过");
+            return null;
+        }
+
+        // 3. 合并 PDF
+        byte[] combinedPdf = PdfMerger.merge(
+                platformPdf != null ? platformPdf : new byte[0],
+                projectPdf != null ? projectPdf : new byte[0]);
+
+        // 4. 创建宜搭记录
+        String formInstId = formUpdater.createReportRecord(
+                reportBaseName, periodLabel, rangeLabel, dateDisplay);
+
+        if (formInstId == null || formInstId.isEmpty()) {
+            log.error("创建宜搭记录失败，跳过 {}", reportBaseName);
+            return null;
+        }
+
+        // 5. 上传到 OBS
+        Map<String, String> obsInfo = formUpdater.uploadToObs(
+                combinedPdf, periodLabel + "报告", reportBaseName);
+
+        // 6. 更新宜搭记录
+        formUpdater.updateReportRecord(formInstId,
+                Collections.singletonList(obsInfo), dateDisplay, true, "已完成");
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("reportName", reportBaseName);
+        result.put("formInstId", formInstId);
+        result.put("obsUrl", obsInfo.get("previewUrl"));
+        result.put("pdfSize", combinedPdf.length);
+        result.put("shortCode", shortCode);
+
+        log.info("✅ 合并报告完成: {} ({} KB, formId={})",
+                reportBaseName, combinedPdf.length / 1024, formInstId);
+
+        return result;
     }
 
 
