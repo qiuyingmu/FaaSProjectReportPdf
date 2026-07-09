@@ -135,46 +135,41 @@ public class ReportService {
     }
 
     /**
-     * 生成项目报告 PDF，目录页码从 1 开始。
+     * 生成项目报告 PDF，目录页码与 PDF 底部页脚一致。
      *
-     * <p>将封面和项目正文拆分为两个 PDF 分别渲染：
-     * 1. 项目正文 PDF 自带页脚，页码从 1 开始；
-     * 2. 通过文本标记提取每个项目的真实起始页码；
-     * 3. 用这些页码生成封面/目录 PDF；
-     * 4. 用 PDFBox 合并封面 + 项目正文。</p>
+     * <p>单文档模式（封面 + 项目正文在一个 PDF 中），确保 TOC 超链接能正确跳转。
+     * 通过两趟渲染获取精确页码：
+     * 1. 渲染无页码临时 PDF；
+     * 2. 从 PDF 提取文本标记获取各项目真实起始页码；
+     * 3. 重新渲染带正确页码的最终 PDF。</p>
      */
     private byte[] renderProjectPdfWithPageNumbers(ProjectReportData projectData) throws Exception {
         long start = System.currentTimeMillis();
 
-        // 1. 渲染项目正文（无目录页码，但包含提取标记）
-        String projectsXhtml = ReportProjectPdfBuilder.INSTANCE.buildProjectsOnly(projectData, null);
-        byte[] projectsPdf = exportPdfFromHtml(projectsXhtml);
+        // 第一趟：渲染无页码临时版本，用于提取真实页码
+        String xhtmlPass1 = ReportProjectPdfBuilder.INSTANCE.build(projectData, null);
+        byte[] pdfPass1 = exportPdfFromHtml(xhtmlPass1);
 
-        // 2. 提取项目页码映射（project index → page number，从 1 开始）
-        Map<Integer, Integer> pageNumberMap = extractPageNumberMap(projectData, projectsPdf);
+        // 提取项目页码映射（project index → actual PDF page number）
+        Map<Integer, Integer> pageNumberMap = extractPageNumberMap(projectData, pdfPass1);
 
         if (pageNumberMap.isEmpty()) {
-            log.warn("[ReportService] 未从项目正文提取到页码，按结构推算");
+            log.warn("[ReportService] 未提取到项目页码，按结构推算");
             pageNumberMap = calculateStructuralPageNumbers(projectData);
         }
 
         if (pageNumberMap.isEmpty()) {
-            log.warn("[ReportService] 无项目页码可用，直接返回项目正文 PDF");
-            return projectsPdf;
+            log.warn("[ReportService] 无项目页码可用，返回无页码版本");
+            return pdfPass1;
         }
 
-        // 3. 渲染封面（含正确目录页码）
-        String coverXhtml = ReportProjectPdfBuilder.INSTANCE.buildCoverOnly(projectData, pageNumberMap);
-        byte[] coverPdf = exportPdfFromHtml(coverXhtml);
+        // 第二趟：渲染带正确页码的版本（单文档，链接可跳转）
+        String xhtmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(projectData, pageNumberMap);
+        byte[] pdfPass2 = exportPdfFromHtml(xhtmlPass2);
 
-        // 4. 合并封面 + 项目正文
-        byte[] mergedPdf = PdfMerger.merge(coverPdf, projectsPdf);
-
-        log.info("[ReportService] 项目报告渲染完成，共 {} 个项目页码，合并后 {} 页，总耗时 {}ms",
-                pageNumberMap.size(),
-                coverPdf.length > 0 && projectsPdf.length > 0 ? "封面+项目" : "单部分",
-                System.currentTimeMillis() - start);
-        return mergedPdf;
+        log.info("[ReportService] 项目报告渲染完成，共 {} 个项目页码，总耗时 {}ms",
+                pageNumberMap.size(), System.currentTimeMillis() - start);
+        return pdfPass2;
     }
 
     private Map<Integer, Integer> extractPageNumberMap(ProjectReportData projectData, byte[] pdfBytes)
@@ -200,14 +195,14 @@ public class ReportService {
     /**
      * 按文档结构推算项目起始页码（fallback）。
      *
-     * <p>项目正文作为独立 PDF 渲染，页码从 1 开始；每个项目强制从新页开始，
-     * 因此项目 i 的起始页码为 i。</p>
+     * <p>封面占第 1 页，每个项目强制从新页开始，
+     * 因此项目 i 在单文档中的页码为 i + 1。</p>
      */
     private Map<Integer, Integer> calculateStructuralPageNumbers(ProjectReportData projectData) {
         Map<Integer, Integer> pageNumberMap = new LinkedHashMap<>();
         int projectCount = projectData.getProjectReports().size();
         for (int i = 1; i <= projectCount; i++) {
-            pageNumberMap.put(i, i);
+            pageNumberMap.put(i, i + 1);
         }
         log.info("[ReportService] 按结构推算 {} 个项目页码", projectCount);
         return pageNumberMap;

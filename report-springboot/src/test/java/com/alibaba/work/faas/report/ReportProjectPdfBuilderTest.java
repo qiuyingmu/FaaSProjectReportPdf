@@ -60,7 +60,7 @@ public class ReportProjectPdfBuilderTest {
     @Test
     void build_shouldExtractPageNumbersFromRenderedPdf(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
-        String html = ReportProjectPdfBuilder.INSTANCE.buildProjectsOnly(data, null);
+        String html = ReportProjectPdfBuilder.INSTANCE.build(data);
 
         ReportPdfExporter exporter = new ReportPdfExporter();
         byte[] pdf = exporter.exportPdfFromHtml(html);
@@ -68,13 +68,13 @@ public class ReportProjectPdfBuilderTest {
         assertTrue(pdf.length > 0, "PDF 应有内容");
 
         // 通过嵌入的文本标记提取项目起始页码
-        // 项目正文作为独立文档渲染，项目 1 从第 1 页开始
+        // 单文档模式：封面为第 1 页，项目 1 从第 2 页开始
         Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(pdf);
         assertFalse(pageMap.isEmpty(), "应能通过文本标记提取到项目页码");
         assertTrue(pageMap.containsKey(1), "应包含项目 1 的页码");
         assertTrue(pageMap.containsKey(2), "应包含项目 2 的页码");
-        assertEquals(Integer.valueOf(1), pageMap.get(1),
-                "项目 1 应从第 1 页开始");
+        assertEquals(Integer.valueOf(2), pageMap.get(1),
+                "项目 1 应从第 2 页开始（封面为第 1 页）");
         assertTrue(pageMap.get(2) > pageMap.get(1),
                 "项目 2 页码应大于项目 1 页码");
 
@@ -85,16 +85,37 @@ public class ReportProjectPdfBuilderTest {
     void build_shouldRenderTocWithInjectedPageNumbers(@TempDir Path tempDir) throws Exception {
         ProjectReportData data = mockMultiProjectData();
 
-        // 模拟真实跨页场景：项目 1 = 第 1 页, 项目 2 = 第 3 页
+        // 模拟真实跨页场景：项目 1 = 第 2 页, 项目 2 = 第 3 页
         Map<Integer, Integer> pageNumberMap = new java.util.LinkedHashMap<>();
-        pageNumberMap.put(1, 1);
+        pageNumberMap.put(1, 2);
         pageNumberMap.put(2, 3);
 
-        String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.buildCoverOnly(data, pageNumberMap);
+        String htmlPass2 = ReportProjectPdfBuilder.INSTANCE.build(data, pageNumberMap);
 
-        assertTrue(htmlPass2.contains(">1<"), "目录中项目 1 的页码应为 1");
+        assertTrue(htmlPass2.contains(">2<"), "目录中项目 1 的页码应为 2");
         assertTrue(htmlPass2.contains(">3<"), "目录中项目 2 的页码应为 3");
         assertFalse(htmlPass2.contains(">-<"), "目录中不应出现未解析的 -");
+    }
+
+    @Test
+    void build_shouldMergeCoverAndProjectsLinksWorkInSingleDocument(@TempDir Path tempDir) throws Exception {
+        ProjectReportData data = mockMultiProjectData();
+        ReportPdfExporter exporter = new ReportPdfExporter();
+
+        // 单文档渲染（封面+项目）
+        String html = ReportProjectPdfBuilder.INSTANCE.build(data, null);
+        byte[] pdf = exporter.exportPdfFromHtml(html);
+
+        // 提取页码
+        Map<Integer, Integer> pageMap = PdfHelper.extractPageNumbers(pdf);
+
+        // 用真实页码重新渲染
+        String htmlFinal = ReportProjectPdfBuilder.INSTANCE.build(data, pageMap);
+        byte[] pdfFinal = exporter.exportPdfFromHtml(htmlFinal);
+
+        assertTrue(pdfFinal.length > 0, "最终 PDF 应有内容");
+        assertTrue(pageMap.containsKey(1) && pageMap.containsKey(2), "应提取到所有项目页码");
+        System.out.println("✅ 单文档 PDF 生成成功，页码映射: " + pageMap);
     }
 
     @Test
