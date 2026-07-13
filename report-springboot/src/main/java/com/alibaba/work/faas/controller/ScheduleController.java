@@ -68,6 +68,14 @@ public class ScheduleController {
     public Map<String, Object> updateSchedule(
             @PathVariable String type,
             @RequestBody ScheduleTask task) {
+        // 检查任务是否存在
+        if (scheduleTaskService.findByType(type) == null) {
+            return errorResult("任务 '" + type + "' 不存在，请先创建");
+        }
+        // 校验必填字段
+        if (task.getCron() == null || task.getCron().isEmpty()) {
+            return errorResult("Cron 表达式不能为空");
+        }
         task.setType(type);
         ScheduleTask updated = dynamicScheduler.updateTask(task);
         operationLogService.log("admin", "SCHEDULE_UPDATE",
@@ -101,7 +109,7 @@ public class ScheduleController {
     /** 删除任务 */
     @DeleteMapping("/{type}")
     public Map<String, Object> deleteSchedule(@PathVariable String type) {
-        dynamicScheduler.stopTask(type);
+        dynamicScheduler.deleteTask(type);
         scheduleTaskService.deleteByType(type);
         operationLogService.log("admin", "SCHEDULE_DELETE",
                 "删除任务 " + type, "SUCCESS", null);

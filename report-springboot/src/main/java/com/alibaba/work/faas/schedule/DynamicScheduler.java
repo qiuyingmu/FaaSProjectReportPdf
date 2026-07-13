@@ -128,7 +128,9 @@ public class DynamicScheduler implements DisposableBean {
                 runnable,
                 triggerContext -> {
                     org.springframework.scheduling.support.CronTrigger trigger =
-                            new org.springframework.scheduling.support.CronTrigger(task.getCron());
+                            new org.springframework.scheduling.support.CronTrigger(
+                                    task.getCron(),
+                                    java.util.TimeZone.getTimeZone("Asia/Shanghai"));
                     return trigger.nextExecutionTime(triggerContext);
                 });
 
@@ -145,6 +147,15 @@ public class DynamicScheduler implements DisposableBean {
             future.cancel(false);
             log.info("⏹ 任务已停止: {}", type);
         }
+    }
+
+    /**
+     * 删除一个定时任务：停止运行中的 Future，并从内存配置中移除。
+     */
+    public synchronized void deleteTask(String type) {
+        stopTask(type);
+        taskConfigs.remove(type);
+        log.info("🗑 任务已删除: {}", type);
     }
 
     /**
@@ -165,7 +176,7 @@ public class DynamicScheduler implements DisposableBean {
     /**
      * 获取所有任务配置（含运行状态）。
      */
-    public List<ScheduleTask> getTasks() {
+    public synchronized List<ScheduleTask> getTasks() {
         List<ScheduleTask> result = new ArrayList<>();
         for (ScheduleTask t : taskConfigs.values()) {
             ScheduleTask copy = new ScheduleTask(

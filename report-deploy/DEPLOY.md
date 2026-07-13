@@ -31,6 +31,8 @@ DB_PASSWORD=你的数据库密码                   # PostgreSQL 密码
 CORS_ALLOWED_ORIGINS=https://realtimevideo.jgjl.cn  # 不要改
 dingtalk.app.key=你的钉钉AppKey
 dingtalk.app.secret=你的钉钉AppSecret
+OBS_ACCESS_KEY=你的华为云AccessKey           # 可选，不配则 PDF 只本地生成
+OBS_SECRET_KEY=你的华为云SecretKey           # 可选
 ```
 
 ---

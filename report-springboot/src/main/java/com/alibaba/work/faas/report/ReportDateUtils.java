@@ -140,6 +140,21 @@ public final class ReportDateUtils {
                 Date dayStart = c.getTime();
                 return new DateRange(dayStart, now, dayStart, now);
             }
+            case "yesterday": {
+                Calendar c = Calendar.getInstance();
+                c.add(Calendar.DAY_OF_MONTH, -1);
+                c.set(Calendar.HOUR_OF_DAY, 0);
+                c.set(Calendar.MINUTE, 0);
+                c.set(Calendar.SECOND, 0);
+                c.set(Calendar.MILLISECOND, 0);
+                Date ys = c.getTime();
+                c.set(Calendar.HOUR_OF_DAY, 23);
+                c.set(Calendar.MINUTE, 59);
+                c.set(Calendar.SECOND, 59);
+                c.set(Calendar.MILLISECOND, 999);
+                Date ye = c.getTime();
+                return new DateRange(ys, ye, ys, ye);
+            }
             case "week":
                 return new DateRange(weekStart(now), now, weekStart(now), weekEnd(now));
             case "lastWeek":
@@ -176,8 +191,8 @@ public final class ReportDateUtils {
                 Calendar c = Calendar.getInstance();
                 int month = c.get(Calendar.MONTH); // 0-based
                 int qsMonth = (month / 3) * 3; // 0, 3, 6, 9
-                c.set(Calendar.MONTH, qsMonth);
                 c.set(Calendar.DAY_OF_MONTH, 1);
+                c.set(Calendar.MONTH, qsMonth);
                 c.set(Calendar.HOUR_OF_DAY, 0);
                 c.set(Calendar.MINUTE, 0);
                 c.set(Calendar.SECOND, 0);
@@ -193,8 +208,8 @@ public final class ReportDateUtils {
                     c.add(Calendar.YEAR, -1);
                     qsMonth += 12;
                 }
-                c.set(Calendar.MONTH, qsMonth);
                 c.set(Calendar.DAY_OF_MONTH, 1);
+                c.set(Calendar.MONTH, qsMonth);
                 c.set(Calendar.HOUR_OF_DAY, 0);
                 c.set(Calendar.MINUTE, 0);
                 c.set(Calendar.SECOND, 0);
@@ -226,13 +241,18 @@ public final class ReportDateUtils {
             case "today": {
                 return fd(now);
             }
+            case "yesterday": {
+                Calendar c = Calendar.getInstance();
+                c.add(Calendar.DAY_OF_MONTH, -1);
+                return fd(c.getTime());
+            }
             case "week": {
                 Date s = weekStart(now), e = weekEnd(now);
                 return "第" + isoWeek(now) + "周（" + fd(s) + "~" + fd(e) + "）";
             }
             case "lastWeek": {
                 Date s = lastWeekStart(now), e = lastWeekEnd(now);
-                return "第" + (isoWeek(now) - 1) + "周（" + fd(s) + "~" + fd(e) + "）";
+                return "第" + isoWeek(s) + "周（" + fd(s) + "~" + fd(e) + "）";
             }
             case "month": {
                 Calendar c = Calendar.getInstance();
@@ -291,6 +311,7 @@ public final class ReportDateUtils {
             case "quarter": return "本季度";
             case "lastQuarter": return "上季度";
             case "today": return "当日";
+            case "yesterday": return "昨日";
             default: return "未知";
         }
     }

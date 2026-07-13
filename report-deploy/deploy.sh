@@ -53,6 +53,18 @@ check_env() {
     fi
 }
 
+# OBS 可选，未配置只警告不阻断
+check_obs_env() {
+    local key=$1
+    local placeholder=$2
+    local value=$(grep "^${key}=" .env | head -1 | cut -d'=' -f2-)
+    if [ -z "$value" ] || [ "$value" = "$placeholder" ]; then
+        echo "  ⚠️  $key 未配置，PDF 不会上传到 OBS"
+    else
+        echo "  ✅ $key 已填写"
+    fi
+}
+
 check_env "REPORT_ADMIN_PASSWORD" "your-strong-password-here"
 # DB_PASSWORD 默认 Report@2026 可直接使用
 echo "  ✅ DB_PASSWORD 使用默认值"
@@ -60,6 +72,10 @@ echo "  ✅ DB_PASSWORD 使用默认值"
 echo "  ✅ CORS_ALLOWED_ORIGINS 使用默认值"
 check_env "dingtalk.app.key" "your-app-key-here"
 check_env "dingtalk.app.secret" "your-app-secret-here"
+
+# OBS 为可选配置，不影响启动
+check_obs_env "OBS_ACCESS_KEY" "your-obs-access-key"
+check_obs_env "OBS_SECRET_KEY" "your-obs-secret-key"
 
 if [ $CHECK_FAILED -eq 1 ]; then
     echo ""

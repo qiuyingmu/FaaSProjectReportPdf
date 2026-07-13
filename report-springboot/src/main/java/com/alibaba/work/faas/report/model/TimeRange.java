@@ -19,7 +19,8 @@ public enum TimeRange {
     LAST_MONTH("lastMonth", "上月"),
     THIS_QUARTER("thisQuarter", "本季度"),
     LAST_QUARTER("lastQuarter", "上季度"),
-    TODAY("today", "当日");
+    TODAY("today", "当日"),
+    YESTERDAY("yesterday", "昨日");
 
     private final String code;
     private final String label;
@@ -42,6 +43,7 @@ public enum TimeRange {
             case THIS_QUARTER: return "quarter";
             case LAST_QUARTER: return "lastQuarter";
             case TODAY:        return "today";
+            case YESTERDAY:    return "yesterday";
             default: throw new IllegalStateException("Unexpected: " + this);
         }
     }
@@ -54,7 +56,7 @@ public enum TimeRange {
             if (t.code.equalsIgnoreCase(code)) return t;
         }
         throw new IllegalArgumentException("未知的时间范围: " + code
-                + "，可选值: thisWeek, lastWeek, thisMonth, lastMonth, thisQuarter, lastQuarter");
+                + "，可选值: thisWeek, lastWeek, thisMonth, lastMonth, thisQuarter, lastQuarter, today, yesterday");
     }
 
     /**
@@ -65,7 +67,7 @@ public enum TimeRange {
             if (t.label.equals(label)) return t;
         }
         throw new IllegalArgumentException("未知的时间范围: " + label
-                + "，可选值: 本周, 上周, 本月, 上月, 本季度, 上季度");
+                + "，可选值: 本周, 上周, 本月, 上月, 本季度, 上季度, 当日, 昨日");
     }
 
     /**

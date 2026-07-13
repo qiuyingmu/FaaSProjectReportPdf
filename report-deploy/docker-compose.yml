@@ -47,6 +47,8 @@ services:
       REPORT_ADMIN_PASSWORD: ${REPORT_ADMIN_PASSWORD}
       # CORS 允许的前端域名
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://realtimevideo.jgjl.cn}
+      # 容器时区设置为北京时间，确保 cron 按北京时间触发
+      TZ: Asia/Shanghai
     env_file:
       - .env
     ports:

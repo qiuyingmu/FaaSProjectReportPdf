@@ -30,6 +30,7 @@
             <el-form-item label="时间范围" prop="timeRangeCode">
               <el-select v-model="form.timeRangeCode" style="width:100%;">
                 <el-option label="当日" value="today" />
+                <el-option label="昨日" value="yesterday" />
                 <el-option label="上周" value="lastWeek" />
                 <el-option label="上月" value="lastMonth" />
                 <el-option label="上季度" value="lastQuarter" />
@@ -184,7 +185,7 @@ export default {
     },
     async updateCron(t) {
       try {
-        const d = await apiPut(`/api/admin/schedules/${t.type}`, { cron: t.cron, timeRangeCode: t.timeRangeCode, enabled: true }, { noRedirect: true })
+        const d = await apiPut(`/api/admin/schedules/${t.type}`, { cron: t.cron, timeRangeCode: t.timeRangeCode, enabled: t.enabled }, { noRedirect: true })
         if (d.success) { this.load(); ElMessage.success('已更新') }
         else ElMessage.error('失败: ' + d.message)
       } catch { ElMessage.error('请求失败') }
