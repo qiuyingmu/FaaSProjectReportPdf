@@ -56,7 +56,11 @@ public class ReportPdfBuilder {
     // ========================================
 
     private String buildHeader(ReportData data) {
-        String period = ReportDateUtils.rangeToPeriodLabel(data.getRangeKey());
+        // 周期标签：优先用 data 携带的 periodLabel，回退到 rangeToPeriodLabel 推断
+        String period = data.getPeriodLabel();
+        if (period == null || period.isEmpty()) {
+            period = ReportDateUtils.rangeToPeriodLabel(data.getRangeKey());
+        }
         return ""
             + "<table class=\"header-table\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n"
             + "  <tr>\n"

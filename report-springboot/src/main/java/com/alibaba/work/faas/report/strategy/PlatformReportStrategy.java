@@ -127,7 +127,8 @@ public class PlatformReportStrategy implements ReportStrategy {
                 ReportDateUtils.periodName(range),
                 range,
                 projects,
-                grandTotal
+                grandTotal,
+                label   // 传入 periodLabel，Builder 直接从 data 读取
         );
     }
 

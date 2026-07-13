@@ -18,6 +18,9 @@ public class ReportData {
     /** 时间范围标识 */
     private final String rangeKey;
 
+    /** 周期标签（周报/月报/季报/日报），由 loadStats 直接设置，Builder 直接用 */
+    private final String periodLabel;
+
     /** 项目列表 */
     private final List<ProjectStat> projects;
 
@@ -26,16 +29,24 @@ public class ReportData {
 
     public ReportData(String timeRangeLabel, String periodName, String rangeKey,
                       List<ProjectStat> projects, int totalRecords) {
+        this(timeRangeLabel, periodName, rangeKey, projects, totalRecords, null);
+    }
+
+    public ReportData(String timeRangeLabel, String periodName, String rangeKey,
+                      List<ProjectStat> projects, int totalRecords, String periodLabel) {
         this.timeRangeLabel = timeRangeLabel;
         this.periodName = periodName;
         this.rangeKey = rangeKey;
         this.projects = projects;
         this.totalRecords = totalRecords;
+        this.periodLabel = periodLabel;
     }
 
     public String getTimeRangeLabel() { return timeRangeLabel; }
     public String getPeriodName() { return periodName; }
     public String getRangeKey() { return rangeKey; }
+    /** 周期标签（周报/月报/季报/日报），null 时 Builder 回退到 rangeToPeriodLabel(rangeKey) */
+    public String getPeriodLabel() { return periodLabel; }
     public List<ProjectStat> getProjects() { return projects; }
     public int getTotalRecords() { return totalRecords; }
 

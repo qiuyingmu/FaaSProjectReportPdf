@@ -47,12 +47,17 @@ public class ReportHtmlBuilder {
     // ========================================
 
     private String buildHeader(ReportData data) {
+        // 周期标签：优先用 data 携带的 periodLabel，回退到 rangeToPeriodLabel 推断
+        String label = data.getPeriodLabel();
+        if (label == null || label.isEmpty()) {
+            label = ReportDateUtils.rangeToPeriodLabel(data.getRangeKey());
+        }
         return ""
             + "<header class=\"report-header\">\n"
             + "  <div class=\"report-header-top\">\n"
             + "    <div class=\"report-title\">\n"
             + "      <div class=\"report-type-badge\">📊 平台运营报告</div>\n"
-            + "      <h1>【平台运营报告-" + ReportDateUtils.rangeToPeriodLabel(data.getRangeKey()) + "-" + data.getTimeRangeLabel() + "】</h1>\n"
+            + "      <h1>【平台运营报告-" + label + "-" + data.getTimeRangeLabel() + "】</h1>\n"
             + "      <div class=\"subtitle\">报告生成时间：" + nowStr() + "</div>\n"
             + "    </div>\n"
             + "  </div>\n"
