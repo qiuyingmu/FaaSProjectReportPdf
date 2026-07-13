@@ -85,8 +85,8 @@ public class ReportService {
             @SuppressWarnings("unchecked")
             List<ProjectReportData> dataList = (List<ProjectReportData>) projDataMap.get("dataList");
             if (dataList != null && !dataList.isEmpty()) {
-                // 用与宜搭运营报告名称一致的日期格式作为全项目报告副标题
-                String projectSub = "【全项目汇总报告" + reportBaseName.substring(5) + "】";
+                // subtitle = "月报-2026年6月（...）"，Builders 自行加【全项目汇总报告-...】包裹
+                String projectSub = reportBaseName.substring("运营报告-".length());
                 ProjectReportData data = dataList.get(0).withSubtitle(projectSub);
                 projectPdf = renderProjectPdfWithPageNumbers(data);
             }
