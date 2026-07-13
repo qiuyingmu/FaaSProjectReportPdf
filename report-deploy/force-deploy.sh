@@ -32,10 +32,32 @@ echo ""
 echo "▶ 第 4 步：等待服务启动..."
 sleep 20
 
-# 5. 显示验证信息
+# 5. 验证 JAR 是不是新代码
 echo ""
 echo "==========================================="
-echo "  部署完成！验证信息："
+echo "  验证新代码是否真的在容器内运行"
+echo "==========================================="
+echo ""
+
+# 5.1 检查容器内 JAR 的修改时间
+echo "▶ 容器内 JAR 修改时间："
+docker exec report-backend sh -c "ls -la /app/app.jar 2>/dev/null || ls -la /app.jar 2>/dev/null || echo 'JAR 路径未找到'"
+
+echo ""
+echo "▶ 宿主机 JAR 修改时间（应该和上面的接近）："
+ls -la report-springboot-1.0.0.jar
+
+echo ""
+echo "▶ 容器内 ReportHtmlBuilder.class 是否包含 rangeToPeriodLabel 调用："
+docker exec report-backend sh -c "unzip -p /app/app.jar BOOT-INF/classes/com/alibaba/work/faas/report/ReportHtmlBuilder.class 2>/dev/null | strings | grep -E 'rangeToPeriodLabel|formatRangeLabel' | head -5"
+
+echo ""
+echo "▶ 容器内 PlatformReportStrategy.class 是否调用 formatRangeLabel："
+docker exec report-backend sh -c "unzip -p /app/app.jar BOOT-INF/classes/com/alibaba/work/faas/report/strategy/PlatformReportStrategy.class 2>/dev/null | strings | grep -E 'formatRangeLabel' | head -5"
+
+echo ""
+echo "==========================================="
+echo "  部署完成！"
 echo "==========================================="
 echo ""
 echo "▶ 容器时间（应显示 CST 北京时间）："

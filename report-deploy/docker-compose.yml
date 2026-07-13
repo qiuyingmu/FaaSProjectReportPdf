@@ -55,6 +55,9 @@ services:
       - "127.0.0.1:8082:8080"
     volumes:
       - ./logs:/app/logs
+      # 关键：bind mount 最新 JAR 到容器，每次 docker compose up -d 都是最新代码
+      # 无需 --build，无需清理镜像，强制使用宿主机最新 JAR
+      - ./report-springboot-1.0.0.jar:/app/app.jar:ro
     networks:
       - report-net
 
