@@ -52,7 +52,7 @@ public class ReportHtmlBuilder {
             + "  <div class=\"report-header-top\">\n"
             + "    <div class=\"report-title\">\n"
             + "      <div class=\"report-type-badge\">📊 平台运营报告</div>\n"
-            + "      <h1>【平台运营报告-" + (data.getRangeKey().contains("week") ? "周报" : "月报") + "-" + data.getTimeRangeLabel() + "】</h1>\n"
+            + "      <h1>【平台运营报告-" + ReportDateUtils.rangeToPeriodLabel(data.getRangeKey()) + "-" + data.getTimeRangeLabel() + "】</h1>\n"
             + "      <div class=\"subtitle\">报告生成时间：" + nowStr() + "</div>\n"
             + "    </div>\n"
             + "  </div>\n"
