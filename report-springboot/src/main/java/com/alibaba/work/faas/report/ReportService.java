@@ -68,9 +68,9 @@ public class ReportService {
 
         log.info("▶ 生成合并报告: {}", reportBaseName);
 
-        // 1. 生成平台报告 PDF
+        // 1. 生成平台报告 PDF（传入 periodLabel 确保平台封面使用正确的周期标签）
         ReportRequest platRequest = new ReportRequest(
-                ReportType.PLATFORM, Collections.singletonList(tr), null, null);
+                ReportType.PLATFORM, Collections.singletonList(tr), null, null, periodLabel);
         List<ReportResult> platResults = generate(platRequest);
         byte[] platformPdf = (platResults != null && !platResults.isEmpty())
                 ? platResults.get(0).getPdfBytes() : null;

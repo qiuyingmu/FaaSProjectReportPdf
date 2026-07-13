@@ -45,8 +45,9 @@ public class PlatformReportStrategy implements ReportStrategy {
             String range = tr.toReportRange();
             long start = System.currentTimeMillis();
 
-            // 1. 查询数据
-            ReportData data = loadStats(range);
+            // 1. 查询数据（优先使用调用方传入的 periodLabel，消除 rangeToPeriodLabel 推断歧义）
+            String pLabel = request.getPeriodLabel();
+            ReportData data = (pLabel != null) ? loadStats(range, pLabel) : loadStats(range);
 
             // 2. 生成 HTML（浏览器版）
             String html = ReportHtmlBuilder.INSTANCE.build(data);
@@ -78,8 +79,11 @@ public class PlatformReportStrategy implements ReportStrategy {
 
     /**
      * 加载平台报告数据 —— 所有项目的统计概览。
+     *
+     * @param range 时间范围代码（lastWeek/lastMonth/lastQuarter 等）
+     * @param periodLabel 周期标签（周报/月报/季报），null 时自动从 range 推断
      */
-    public ReportData loadStats(String range) throws Exception {
+    public ReportData loadStats(String range, String periodLabel) throws Exception {
         ReportDateUtils.DateRange dr = ReportDateUtils.getRange(range);
         long tick = System.currentTimeMillis();
 
@@ -115,13 +119,23 @@ public class PlatformReportStrategy implements ReportStrategy {
         log.info("[PlatformReportStrategy] 报表生成完成，{} 个项目，总计 {} 条记录，总耗时 {}ms",
                 projects.size(), grandTotal, total);
 
+        // periodLabel 由调用方传入，消除 rangeToPeriodLabel 推断的不确定性
+        String label = (periodLabel != null) ? periodLabel : ReportDateUtils.rangeToPeriodLabel(range);
+
         return new ReportData(
-                ReportDateUtils.formatRangeLabel(ReportDateUtils.rangeToPeriodLabel(range), dr.start, dr.end),
+                ReportDateUtils.formatRangeLabel(label, dr.start, dr.end),
                 ReportDateUtils.periodName(range),
                 range,
                 projects,
                 grandTotal
         );
+    }
+
+    /**
+     * 加载平台报告数据 —— 兼容旧调用（不传 periodLabel）
+     */
+    public ReportData loadStats(String range) throws Exception {
+        return loadStats(range, null);
     }
 
 }

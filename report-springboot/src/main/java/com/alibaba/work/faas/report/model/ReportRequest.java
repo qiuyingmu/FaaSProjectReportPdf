@@ -35,8 +35,16 @@ public class ReportRequest {
     /** 项目名称（项目报告时可选，用于展示） */
     private final String projectName;
 
+    /** 周期标签（周报/月报/季报），平台报告时由调用方传入以消除推断歧义 */
+    private final String periodLabel;
+
     public ReportRequest(ReportType type, List<TimeRange> timeRanges,
                          String projectId, String projectName) {
+        this(type, timeRanges, projectId, projectName, null);
+    }
+
+    public ReportRequest(ReportType type, List<TimeRange> timeRanges,
+                         String projectId, String projectName, String periodLabel) {
         if (type == null) throw new IllegalArgumentException("报表类型不能为空");
         if (timeRanges == null || timeRanges.isEmpty()) {
             throw new IllegalArgumentException("时间范围不能为空");
@@ -45,6 +53,7 @@ public class ReportRequest {
         this.timeRanges = timeRanges;
         this.projectId = projectId;
         this.projectName = projectName;
+        this.periodLabel = periodLabel;
     }
 
     // ========================================
@@ -55,6 +64,7 @@ public class ReportRequest {
     public List<TimeRange> getTimeRanges() { return timeRanges; }
     public String getProjectId() { return projectId; }
     public String getProjectName() { return projectName; }
+    public String getPeriodLabel() { return periodLabel; }
 
     /** 是否为项目报告 */
     public boolean isProjectReport() { return type == ReportType.PROJECT; }
