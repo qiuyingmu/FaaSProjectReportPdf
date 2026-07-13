@@ -63,7 +63,7 @@ public class ReportService {
                                                               String dateDisplay) throws Exception {
         String shortCode = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
 
-        // 构建运营报告名称（textField_mnznz7bg），各周期格式不同
+        // 构建运营报告名称（宜搭 textField_mnznz7bg）
         String reportBaseName = buildReportName(periodLabel, tr, rangeLabel, dateDisplay);
 
         log.info("▶ 生成合并报告: {}", reportBaseName);
@@ -85,7 +85,10 @@ public class ReportService {
             @SuppressWarnings("unchecked")
             List<ProjectReportData> dataList = (List<ProjectReportData>) projDataMap.get("dataList");
             if (dataList != null && !dataList.isEmpty()) {
-                projectPdf = renderProjectPdfWithPageNumbers(dataList.get(0));
+                // 用与宜搭运营报告名称一致的日期格式作为全项目报告副标题
+                String projectSub = "【全项目汇总报告" + reportBaseName.substring(5) + "】";
+                ProjectReportData data = dataList.get(0).withSubtitle(projectSub);
+                projectPdf = renderProjectPdfWithPageNumbers(data);
             }
         }
         // 退路：如果策略未返回数据，用标准 generate 流程
@@ -115,7 +118,7 @@ public class ReportService {
             return null;
         }
 
-        // 5. 上传到 OBS
+        // 5. 上传到 OBS（reportBaseName 用作 OBS 目录名+文件名）
         Map<String, String> obsInfo = formUpdater.uploadToObs(
                 combinedPdf, periodLabel + "报告", reportBaseName);
 
@@ -243,7 +246,7 @@ public class ReportService {
     }
 
     /**
-     * 构建运营报告名称（textField_mnznz7bg），各周期格式不同。
+     * 构建运营报告名称，与宜搭 textField_mnznz7bg 使用同一规则。
      *
      * <p>月报：运营报告-月报-2026年6月（2026-06-01 ~ 2026-06-30）</p>
      * <p>周报：运营报告-周报-2026年第27周（6-29 ~ 7-05）</p>
@@ -258,43 +261,8 @@ public class ReportService {
             if (dr == null || dr.start == null) {
                 return "运营报告-" + periodLabel + "-" + rangeLabel;
             }
-
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(dr.start);
-            int year = cal.get(Calendar.YEAR);
-            int startMonth = cal.get(Calendar.MONTH) + 1;
-            int startDay = cal.get(Calendar.DAY_OF_MONTH);
-
-            if ("月报".equals(periodLabel)) {
-                String sd = ReportDateUtils.fd(dr.start);
-                String ed = ReportDateUtils.fd(dr.end);
-                return String.format("运营报告-月报-%d年%d月（%s ~ %s）", year, startMonth, sd, ed);
-            }
-
-            if ("周报".equals(periodLabel)) {
-                int week = ReportDateUtils.isoWeek(dr.start);
-                cal.setTime(dr.end);
-                int endMonth = cal.get(Calendar.MONTH) + 1;
-                int endDay = cal.get(Calendar.DAY_OF_MONTH);
-                return String.format("运营报告-周报-%d年第%d周（%d-%d ~ %d-%d）",
-                        year, week, startMonth, startDay, endMonth, endDay);
-            }
-
-            if ("季报".equals(periodLabel)) {
-                int quarter = (startMonth - 1) / 3 + 1;
-                String sd = ReportDateUtils.fd(dr.start);
-                String ed = ReportDateUtils.fd(dr.end);
-                return String.format("运营报告-季报-%d年第%d季度（%s ~ %s）", year, quarter, sd, ed);
-            }
-
-            // 日报 / 昨日 / 当日 等 —— 显示完整日期 + 00:00 ~ 次日00:00
-            Calendar nextDay = Calendar.getInstance();
-            nextDay.setTime(dr.end);
-            nextDay.add(Calendar.DAY_OF_MONTH, 1);
-            String sd = ReportDateUtils.fd(dr.start) + " 00:00";
-            String ed = ReportDateUtils.fd(nextDay.getTime()) + " 00:00";
-            return String.format("运营报告-%s-%d年%d月%d日（%s ~ %s）",
-                    periodLabel, year, startMonth, startDay, sd, ed);
+            String datePart = ReportDateUtils.formatRangeLabel(periodLabel, dr.start, dr.end);
+            return "运营报告-" + periodLabel + "-" + datePart;
 
         } catch (Exception e) {
             log.warn("[ReportService] 构建报告名称失败，使用回退格式: {}", e.getMessage());

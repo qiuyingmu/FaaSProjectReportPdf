@@ -85,7 +85,7 @@ public class ProjectReportStrategy implements ReportStrategy {
 
             ProjectReportData data = new ProjectReportData(
                     dateStart, dateEnd,
-                    ReportDateUtils.rangeLabel(range),
+                    ReportDateUtils.formatRangeLabel(ReportDateUtils.rangeToPeriodLabel(range), ReportDateUtils.getRange(range).start, ReportDateUtils.getRange(range).end),
                     ReportDateUtils.periodName(range),
                     Collections.singletonList(new ProjectReportData.PerProjectReport(info.toBrief(), sections)));
 
@@ -132,7 +132,7 @@ public class ProjectReportStrategy implements ReportStrategy {
 
             ProjectReportData data = new ProjectReportData(
                     dateStart, dateEnd,
-                    ReportDateUtils.rangeLabel(range),
+                    ReportDateUtils.formatRangeLabel(ReportDateUtils.rangeToPeriodLabel(range), ReportDateUtils.getRange(range).start, ReportDateUtils.getRange(range).end),
                     ReportDateUtils.periodName(range),
                     projectReports);
 
@@ -184,7 +184,7 @@ public class ProjectReportStrategy implements ReportStrategy {
 
             ProjectReportData data = new ProjectReportData(
                     sdf.format(dr.start), sdf.format(dr.end),
-                    ReportDateUtils.rangeLabel(range),
+                    ReportDateUtils.formatRangeLabel(ReportDateUtils.rangeToPeriodLabel(range), ReportDateUtils.getRange(range).start, ReportDateUtils.getRange(range).end),
                     ReportDateUtils.periodName(range),
                     projectReports);
             dataList.add(data);

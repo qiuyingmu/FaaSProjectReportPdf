@@ -315,4 +315,66 @@ public final class ReportDateUtils {
             default: return "未知";
         }
     }
+
+    /**
+     * 将 range 代码转换为周期标签（月报/周报/季报/日报），与 Builder 中 period 计算逻辑一致。
+     */
+    public static String rangeToPeriodLabel(String range) {
+        if (range == null) return "日报";
+        if (range.contains("quarter")) return "季报";
+        if (range.contains("week")) return "周报";
+        if (range.contains("month")) return "月报";
+        return "日报";
+    }
+
+    /**
+     * 构建与宜搭运营报告名称同格式的日期范围标签。
+     * 月报：2026年6月（2026-06-01 ~ 2026-06-30）
+     * 周报：2026年第27周（6-29 ~ 7-05）
+     * 季报：2026年第2季度（2026-04-01 ~ 2026-06-30）
+     * 日报：2026年7月13日（2026-07-13 00:00 ~ 2026-07-14 00:00）
+     *
+     * @param periodLabel 周期标签（周报/月报/季报/日报等）
+     * @param start 开始日期
+     * @param end 结束日期
+     */
+    public static String formatRangeLabel(String periodLabel, Date start, Date end) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(start);
+        int year = cal.get(Calendar.YEAR);
+        int startMonth = cal.get(Calendar.MONTH) + 1;
+        int startDay = cal.get(Calendar.DAY_OF_MONTH);
+
+        switch (periodLabel) {
+            case "月报": {
+                String sd = fd(start);
+                String ed = fd(end);
+                return String.format("%d年%d月（%s ~ %s）", year, startMonth, sd, ed);
+            }
+            case "周报": {
+                int week = isoWeek(start);
+                cal.setTime(end);
+                int endMonth = cal.get(Calendar.MONTH) + 1;
+                int endDay = cal.get(Calendar.DAY_OF_MONTH);
+                return String.format("%d年第%d周（%d-%d ~ %d-%d）",
+                        year, week, startMonth, startDay, endMonth, endDay);
+            }
+            case "季报": {
+                int quarter = (startMonth - 1) / 3 + 1;
+                String sd = fd(start);
+                String ed = fd(end);
+                return String.format("%d年第%d季度（%s ~ %s）", year, quarter, sd, ed);
+            }
+            default: {
+                // 日报 / 昨日 / 当日 等
+                Calendar nextDay = Calendar.getInstance();
+                nextDay.setTime(end);
+                nextDay.add(Calendar.DAY_OF_MONTH, 1);
+                String sd = fd(start) + " 00:00";
+                String ed = fd(nextDay.getTime()) + " 00:00";
+                return String.format("%d年%d月%d日（%s ~ %s）",
+                        year, startMonth, startDay, sd, ed);
+            }
+        }
+    }
 }

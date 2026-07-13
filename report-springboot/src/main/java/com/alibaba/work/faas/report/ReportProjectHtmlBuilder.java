@@ -68,9 +68,14 @@ public class ReportProjectHtmlBuilder {
 
     private String buildHeader(ProjectReportData data) {
         String badge = data.isMultiProject() ? "\uD83D\uDCCA 全项目汇总报告" : "\uD83D\uDCCA 项目报告";
+        // 优先用 ReportService 传入的副标题（与宜搭运营报告名称同格式）
+        String title = data.getSubtitle();
+        if (title == null || title.isEmpty()) {
+            title = data.getPeriodName() + "-" + data.getTimeRangeLabel();
+        }
         String subtitle = data.isMultiProject()
-                ? "【全项目汇总报告-" + data.getTimeRangeLabel() + "】"
-                : "【项目报告-" + data.getTimeRangeLabel() + "】";
+                ? "【全项目汇总报告-" + title + "】"
+                : "【项目报告-" + title + "】";
         return ""
             + "<div class=\"report-header\">\n"
             + "  <div class=\"header-badge\">" + badge + "</div>\n"

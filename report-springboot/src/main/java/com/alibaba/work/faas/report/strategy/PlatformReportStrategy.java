@@ -116,7 +116,7 @@ public class PlatformReportStrategy implements ReportStrategy {
                 projects.size(), grandTotal, total);
 
         return new ReportData(
-                ReportDateUtils.rangeLabel(range),
+                ReportDateUtils.formatRangeLabel(ReportDateUtils.rangeToPeriodLabel(range), dr.start, dr.end),
                 ReportDateUtils.periodName(range),
                 range,
                 projects,

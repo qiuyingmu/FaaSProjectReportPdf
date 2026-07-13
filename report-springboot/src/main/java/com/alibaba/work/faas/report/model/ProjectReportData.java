@@ -23,6 +23,8 @@ public class ProjectReportData {
     private final String dateEnd;
     private final String timeRangeLabel;
     private final String periodName;
+    /** 自定义副标题（与宜搭运营报告名称同格式），未设置则用 periodName + timeRangeLabel 拼 */
+    private final String subtitle;
 
     // ========================================
     //  按项目分组的报告列表
@@ -37,11 +39,18 @@ public class ProjectReportData {
     public ProjectReportData(String dateStart, String dateEnd,
                               String timeRangeLabel, String periodName,
                               List<PerProjectReport> projectReports) {
+        this(dateStart, dateEnd, timeRangeLabel, periodName, projectReports, null);
+    }
+
+    public ProjectReportData(String dateStart, String dateEnd,
+                              String timeRangeLabel, String periodName,
+                              List<PerProjectReport> projectReports, String subtitle) {
         this.dateStart = dateStart;
         this.dateEnd = dateEnd;
         this.timeRangeLabel = timeRangeLabel;
         this.periodName = periodName;
         this.projectReports = projectReports != null ? projectReports : Collections.emptyList();
+        this.subtitle = subtitle;
     }
 
     // ========================================
@@ -52,6 +61,12 @@ public class ProjectReportData {
     public String getDateEnd() { return dateEnd; }
     public String getTimeRangeLabel() { return timeRangeLabel; }
     public String getPeriodName() { return periodName; }
+    /** 自定义副标题，与宜搭运营报告名称同格式 */
+    public String getSubtitle() { return subtitle; }
+    /** 返回带新副标题的副本 */
+    public ProjectReportData withSubtitle(String subtitle) {
+        return new ProjectReportData(dateStart, dateEnd, timeRangeLabel, periodName, projectReports, subtitle);
+    }
     public List<PerProjectReport> getProjectReports() { return projectReports; }
 
     /** 项目数量 */

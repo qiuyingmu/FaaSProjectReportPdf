@@ -56,7 +56,7 @@ public class ReportPdfBuilder {
     // ========================================
 
     private String buildHeader(ReportData data) {
-        String period = data.getRangeKey().contains("week") ? "周报" : "月报";
+        String period = ReportDateUtils.rangeToPeriodLabel(data.getRangeKey());
         return ""
             + "<table class=\"header-table\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n"
             + "  <tr>\n"
