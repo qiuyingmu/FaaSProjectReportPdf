@@ -480,10 +480,11 @@ public class YidaApiManager {
                 // 成功则返回
                 return Objects.isNull(response) ? null : response.getBody();
             } catch (TeaException e) {
-                // 仅对限流错误进行重试
-                if (isRateLimitError(e)) {
+                // 限流错误或服务器错误（5xx）进行重试
+                if (isRateLimitError(e) || isServerError(e)) {
                     lastException = e;
-                    log.warn("[YidaApiManager] 请求被限流，"
+                    log.warn("[YidaApiManager] searchFormData " + (isServerError(e) ? "服务器" : "限流")
+                            + "错误，"
                             + attempt + "/" + MAX_RETRIES + " 次重试，等待 " + backoff + "ms ...");
                     Thread.sleep(backoff);
                     backoff = Math.min(backoff * 2, 16000L);  // 指数退避，上限 16s
@@ -510,6 +511,19 @@ public class YidaApiManager {
     private static boolean isRateLimitError(TeaException e) {
         return "400".equals(e.getCode()) && e.getMessage() != null
                 && e.getMessage().contains("请求过于频繁");
+    }
+
+    /**
+     * 判断是否服务器错误（5xx），这类错误通常是临时的，可以重试。
+     */
+    private static boolean isServerError(TeaException e) {
+        if (e.getCode() == null) return false;
+        try {
+            int code = Integer.parseInt(e.getCode());
+            return code >= 500 && code < 600;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     /**
