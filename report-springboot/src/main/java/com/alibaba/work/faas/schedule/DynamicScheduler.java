@@ -56,6 +56,39 @@ public class DynamicScheduler implements DisposableBean {
     /** 任务配置（内存中，重启后恢复默认） */
     private final Map<String, ScheduleTask> taskConfigs = new LinkedHashMap<>();
 
+    // ========================================
+    //  失败重试机制
+    // ========================================
+
+    /** 最大重试次数 */
+    private static final int MAX_RETRIES = 3;
+
+    /** 重试退避延迟（毫秒）：5分钟、15分钟、30分钟 */
+    private static final long[] RETRY_DELAYS_MS = {300_000L, 900_000L, 1_800_000L};
+
+    /** 重试任务队列：type → 重试信息 */
+    private final Map<String, RetryInfo> retryQueue = new ConcurrentHashMap<>();
+
+    /** 重试信息 */
+    private static class RetryInfo {
+        final TimeRange timeRange;
+        final String periodLabel;
+        final String rangeLabel;
+        final String dateDisplay;
+        int attempt;    // 已尝试次数
+        long nextRetry; // 下次重试时间戳
+
+        RetryInfo(TimeRange timeRange, String periodLabel,
+                  String rangeLabel, String dateDisplay) {
+            this.timeRange = timeRange;
+            this.periodLabel = periodLabel;
+            this.rangeLabel = rangeLabel;
+            this.dateDisplay = dateDisplay;
+            this.attempt = 0;
+            this.nextRetry = 0;
+        }
+    }
+
     @PostConstruct
     public void init() {
         reloadTasks();
@@ -241,7 +274,7 @@ public class DynamicScheduler implements DisposableBean {
     }
 
     /**
-     * 生成合并的周期报告（委托给 ReportService）。
+     * 生成合并的周期报告（委托给 ReportService），失败时自动重试。
      */
     private void generateCombinedReport(TimeRange tr, String periodLabel,
                                          String rangeLabel, String dateRangeDisplay) {
@@ -253,7 +286,67 @@ public class DynamicScheduler implements DisposableBean {
             }
         } catch (Exception e) {
             log.error("{} 合并报告失败: {}", periodLabel, e.getMessage(), e);
+            // 同步重试（立即再试一次，应对部分瞬时错误）
+            try {
+                Thread.sleep(2000);
+                Map<String, Object> retry = reportService.generateCombinedPeriodReport(
+                        tr, periodLabel, rangeLabel, dateRangeDisplay);
+                if (retry != null && Boolean.TRUE.equals(retry.get("success"))) {
+                    log.info("✅ {} 同步重试成功: {}", periodLabel, retry.get("reportName"));
+                    return;
+                }
+            } catch (Exception e2) {
+                log.warn("{} 同步重试也失败，安排异步重试", periodLabel);
+            }
+            // 异步重试（指数退避）
+            scheduleRetry(tr, periodLabel, rangeLabel, dateRangeDisplay);
         }
+    }
+
+    /**
+     * 安排异步重试（最多 MAX_RETRIES 次，5分钟→15分钟→30分钟）。
+     */
+    private void scheduleRetry(TimeRange tr, String periodLabel,
+                                String rangeLabel, String dateDisplay) {
+        String key = periodLabel;
+        RetryInfo info = retryQueue.get(key);
+        if (info == null) {
+            info = new RetryInfo(tr, periodLabel, rangeLabel, dateDisplay);
+            retryQueue.put(key, info);
+        }
+
+        if (info.attempt >= MAX_RETRIES) {
+            log.error("❌ {} 已重试 {} 次仍未成功，放弃重试", periodLabel, MAX_RETRIES);
+            retryQueue.remove(key);
+            return;
+        }
+
+        // 在 lambda 中使用 final 副本
+        final RetryInfo finalInfo = info;
+        final String finalKey = key;
+        final long delay = RETRY_DELAYS_MS[info.attempt];
+        info.attempt++;
+        info.nextRetry = System.currentTimeMillis() + delay;
+
+        log.warn("⏰ {} 将于 {} 分钟后第 {} 次重试（共 {} 次）",
+                periodLabel, delay / 60000, finalInfo.attempt, MAX_RETRIES);
+
+        taskScheduler.schedule(() -> {
+            try {
+                log.info("⏰ {} 开始第 {} 次重试...", periodLabel, finalInfo.attempt);
+                Map<String, Object> result = reportService.generateCombinedPeriodReport(
+                        finalInfo.timeRange, finalInfo.periodLabel, finalInfo.rangeLabel, finalInfo.dateDisplay);
+                if (result != null && Boolean.TRUE.equals(result.get("success"))) {
+                    log.info("✅ {} 重试成功！", periodLabel);
+                    retryQueue.remove(finalKey);
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("{} 第 {} 次重试失败: {}", periodLabel, finalInfo.attempt, e.getMessage());
+            }
+            // 继续下一次重试，用原始参数重新入队
+            scheduleRetry(finalInfo.timeRange, finalInfo.periodLabel, finalInfo.rangeLabel, finalInfo.dateDisplay);
+        }, new java.util.Date(System.currentTimeMillis() + delay));
     }
 
     /**

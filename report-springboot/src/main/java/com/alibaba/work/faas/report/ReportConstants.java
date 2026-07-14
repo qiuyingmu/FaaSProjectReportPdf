@@ -43,17 +43,17 @@ public final class ReportConstants {
 
     // 各数据源的字段
     public static final String F_DOCLIB_PERSON = "textField_ml6no8vf";
-    public static final String F_DOCLIB_DATE = "dateField_ml6no8wb";
+    public static final String F_DOCLIB_DATE = "dateField_ml6no8wf";    // 提交日期（原dateField_ml6no8wb为资料日期）
     public static final String F_DYNAMIC_PERSON = "textField_mlg9av31";
     public static final String F_DYNAMIC_DATE = "dateField_mlelkrk3";
     public static final String F_LOG_PERSON = "textField_mjjngk77";
-    public static final String F_LOG_DATE = "dateField_mjjngk7x";
+    public static final String F_LOG_DATE = "dateField_mkat24th";       // 提交日期
     public static final String F_SAFELOG_PERSON = "textField_mjjngk77";
-    public static final String F_SAFELOG_DATE = "dateField_mjjngk7x";
+    public static final String F_SAFELOG_DATE = "dateField_mkauls9o";   // 提交日期
     public static final String F_STATION_PERSON = "textField_mj89asvv";
-    public static final String F_STATION_DATE = "dateField_mjl61srf";
+    public static final String F_STATION_DATE = "dateField_mjjitv2s";   // 提交日期
     public static final String F_HAZARD_PERSON = "textField_mj89asvv";
-    public static final String F_HAZARD_DATE = "dateField_mpuvsdbz";
+    public static final String F_HAZARD_DATE = "dateField_mnzhv2ul";    // 提交日期
 
 
     // ========================================
