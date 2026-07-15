@@ -96,7 +96,7 @@ export default {
       } catch (e) {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(0)
         if (e.name === 'AbortError') {
-          ElMessage.error(`生成超时（${elapsed}s），大数据量月报请稍后重试`)
+          ElMessage.success('报告正在后台生成中，请稍后到宜搭表单查看', 6000)
         } else {
           ElMessage.error(`请求失败（${elapsed}s）`)
         }

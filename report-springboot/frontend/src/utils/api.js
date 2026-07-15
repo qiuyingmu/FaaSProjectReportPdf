@@ -69,7 +69,7 @@ export async function apiFetch(url, options = {}) {
 
   // 构建请求
   const controller = new AbortController()
-  const timeoutMs = 180000  // 180s 超时（月报大查询）
+  const timeoutMs = 300000  // 300s 超时（月报大数据量查询，给足余量）
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   const res = await fetch(resolveUrl(url), {
