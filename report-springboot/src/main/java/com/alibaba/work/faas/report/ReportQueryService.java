@@ -39,23 +39,30 @@ public class ReportQueryService {
     public static class ProjectInfo {
         public final String instId;
         public final String name;
-        public final String director;
-        public final String engineer;
+        public final String director;      // 总监
+        public final String engineer;       // 专监
         public final String address;
         public final String area;
+        public final String chiefRepresentative; // 总监代表
+        public final String inspector;          // 监理员
 
         public ProjectInfo(String instId, String name, String director,
-                           String engineer, String address, String area) {
+                           String engineer, String address, String area,
+                           String chiefRepresentative, String inspector) {
             this.instId = instId;
             this.name = name;
             this.director = director;
             this.engineer = engineer;
             this.address = address;
             this.area = area;
+            this.chiefRepresentative = chiefRepresentative;
+            this.inspector = inspector;
         }
 
         public ProjectReportData.ProjectBrief toBrief() {
-            return new ProjectReportData.ProjectBrief(name, director, engineer, address, area);
+            return new ProjectReportData.ProjectBrief(
+                    name, director, engineer, address, area,
+                    chiefRepresentative, inspector);
         }
     }
 
@@ -76,14 +83,18 @@ public class ReportQueryService {
             if (name.contains("测试") || name.toLowerCase().contains("test")) continue;
 
             String director = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_DIRECTOR);
-            String engineer = extractEngineer(fd);
+            String engineer = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_ENGINEER);
+            String chief = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_CHIEF);
+            String inspector = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_INSPECTOR);
             String addr = ReportHelper.extractField(fd, ReportConstants.F_PROJECT_ADDR);
             String area = ReportHelper.extractDistrict(addr);
             result.add(new ProjectInfo(row.getFormInstanceId(), name,
                     director != null ? director : "-",
                     engineer != null ? engineer : "-",
                     addr != null ? addr : "-",
-                    area));
+                    area,
+                    chief,
+                    inspector));
         }
         return result;
     }
@@ -96,12 +107,6 @@ public class ReportQueryService {
             if (projectName != null && projectName.equals(pi.name)) return pi;
         }
         return null;
-    }
-
-    private String extractEngineer(Map<String, ?> fd) {
-        if (fd == null) return null;
-        String val = ReportHelper.extractField(fd, "employeeField_mj803km0");
-        return val != null ? val : "-";
     }
 
 

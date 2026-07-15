@@ -39,7 +39,10 @@ public final class ReportConstants {
     // 项目表单字段
     public static final String F_PROJECT_NAME = "textField_mj7z6v5p";
     public static final String F_PROJECT_ADDR = "textField_mkktvlmv";
-    public static final String F_PROJECT_DIRECTOR = "employeeField_mj803km2";
+    public static final String F_PROJECT_DIRECTOR = "employeeField_mj803km2";     // 总监
+    public static final String F_PROJECT_CHIEF = "employeeField_mmms62wr";         // 总监代表
+    public static final String F_PROJECT_ENGINEER = "employeeField_mj803km0";      // 专监
+    public static final String F_PROJECT_INSPECTOR = "employeeField_mmms62wq";     // 监理员
 
     // 各数据源的字段
     public static final String F_DOCLIB_PERSON = "textField_ml6no8vf";

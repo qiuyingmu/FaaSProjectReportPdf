@@ -122,18 +122,28 @@ public class ProjectReportData {
 
     public static class ProjectBrief {
         private final String name;
-        private final String director;
-        private final String engineer;
+        private final String director;         // 总监
+        private final String engineer;          // 专监
         private final String address;
         private final String area;
+        private final String chiefRepresentative; // 总监代表
+        private final String inspector;           // 监理员
 
         public ProjectBrief(String name, String director, String engineer,
                             String address, String area) {
+            this(name, director, engineer, address, area, null, null);
+        }
+
+        public ProjectBrief(String name, String director, String engineer,
+                            String address, String area,
+                            String chiefRepresentative, String inspector) {
             this.name = name;
             this.director = director;
             this.engineer = engineer;
             this.address = address;
             this.area = area;
+            this.chiefRepresentative = chiefRepresentative;
+            this.inspector = inspector;
         }
 
         public String getName() { return name; }
@@ -141,6 +151,41 @@ public class ProjectReportData {
         public String getEngineer() { return engineer; }
         public String getAddress() { return address; }
         public String getArea() { return area; }
+        public String getChiefRepresentative() { return chiefRepresentative; }
+        public String getInspector() { return inspector; }
+
+        /** 构建人员行显示文本：只显示有值的岗位 */
+        public String buildPersonnelDisplay() {
+            StringBuilder sb = new StringBuilder();
+            appendRole(sb, director, "总监");
+            appendRole(sb, chiefRepresentative, "总监代表");
+            appendRole(sb, engineer, "专监");
+            appendRole(sb, inspector, "监理员");
+            return sb.toString().trim();
+        }
+
+        private void appendRole(StringBuilder sb, String value, String role) {
+            if (value != null && !value.isEmpty() && !"-".equals(value)) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(value).append("（").append(role).append("）");
+            }
+        }
+
+        /** 返回不为空的人员角色列表（用于 HTML 标签式渲染） */
+        public List<String[]> getPersonnelRoles() {
+            List<String[]> list = new java.util.ArrayList<>();
+            addRole(list, director, "总监");
+            addRole(list, chiefRepresentative, "总监代表");
+            addRole(list, engineer, "专监");
+            addRole(list, inspector, "监理员");
+            return list;
+        }
+
+        private void addRole(List<String[]> list, String value, String role) {
+            if (value != null && !value.isEmpty() && !"-".equals(value)) {
+                list.add(new String[]{value, role});
+            }
+        }
     }
 
     // ========================================

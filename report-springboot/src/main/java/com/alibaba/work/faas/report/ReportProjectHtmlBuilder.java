@@ -150,12 +150,29 @@ public class ReportProjectHtmlBuilder {
             + "    <div class=\"info-item\">\n"
             + "      <span class=\"info-label\">人员</span>\n"
             + "      <span class=\"info-value person-tags\">\n"
-            + "        <span class=\"person-tag director-tag\">" + escHtml(brief.getDirector()) + "（总监）</span>\n"
-            + "        <span class=\"person-tag engineer-tag\">" + escHtml(brief.getEngineer()) + "（专监）</span>\n"
+            + buildPersonnelHtml(brief)
             + "      </span>\n"
             + "    </div>\n"
             + "  </div>\n"
             + "</div>\n";
+    }
+
+    /** 动态构建人员行 HTML（只渲染非空岗位） */
+    private String buildPersonnelHtml(ProjectBrief brief) {
+        StringBuilder sb = new StringBuilder();
+        for (String[] role : brief.getPersonnelRoles()) {
+            String tagClass;
+            switch (role[1]) {
+                case "总监":      tagClass = "director-tag"; break;
+                case "总监代表":  tagClass = "chief-tag"; break;
+                case "专监":      tagClass = "engineer-tag"; break;
+                case "监理员":    tagClass = "inspector-tag"; break;
+                default:          tagClass = "person-tag"; break;
+            }
+            sb.append("        <span class=\"person-tag ").append(tagClass).append("\">")
+              .append(escHtml(role[0])).append("（").append(role[1]).append("）</span>\n");
+        }
+        return sb.toString();
     }
 
 
