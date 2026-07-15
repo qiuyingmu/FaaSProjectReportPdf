@@ -75,7 +75,12 @@ export default {
   },
   methods: {
     async generate(period) {
+      if (this.loading) {
+        ElMessage.warning('已有生成任务进行中，请稍候')
+        return
+      }
       this.loading = period
+      const startTime = Date.now()
       try {
         const d = await apiPost('/api/admin/reports/generate', { period }, { noRedirect: true })
         if (d.success) {
@@ -89,7 +94,12 @@ export default {
           ElMessage.error(d.message || '生成失败')
         }
       } catch (e) {
-        ElMessage.error('请求失败')
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(0)
+        if (e.name === 'AbortError') {
+          ElMessage.error(`生成超时（${elapsed}s），大数据量月报请稍后重试`)
+        } else {
+          ElMessage.error(`请求失败（${elapsed}s）`)
+        }
       }
       this.loading = null
     },

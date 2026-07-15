@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -433,11 +435,17 @@ public class YidaApiManager {
     /** 指数退避初始等待时间（毫秒） */
     private static final long INITIAL_BACKOFF_MS = 1000L;
 
-    /** 相邻 API 调用的最小间隔（毫秒），用于调用方主动限速 */
+    /** 相邻 API 调用的最小间隔（毫秒） */
     private static final long API_THROTTLE_INTERVAL_MS = 150L;
 
-    /** 上一次 API 调用的时间戳，用于控制调用频率 */
-    private long lastApiCallTime = 0L;
+    /** 并行取页时最大并发数 */
+    private static final int MAX_CONCURRENT_PAGES = 5;
+
+    /** 限流信号量：允许 MAX_CONCURRENT_PAGES 个并发请求，避免超卖 */
+    private final Semaphore throttle = new Semaphore(MAX_CONCURRENT_PAGES);
+
+    /** 上一次 API 调用的时间戳 */
+    private final AtomicLong lastApiCallTime = new AtomicLong(0L);
 
     /**
      * 查询表单实例数据（分页），带自动限流重试。
@@ -456,14 +464,17 @@ public class YidaApiManager {
      * @throws Exception 超出最大重试次数或非限流类错误
      */
     public SearchFormDatasResponseBody searchFormData(SearchFormDatasRequest request) throws Exception {
-        // ---- 主动限速：确保相邻调用间隔至少 API_THROTTLE_INTERVAL_MS ----
-        synchronized (this) {
+        // ---- 主动限速：信号量控制并发数 + 最小间隔 ----
+        throttle.acquire();
+        try {
             long now = System.currentTimeMillis();
-            long elapsed = now - lastApiCallTime;
+            long prev = lastApiCallTime.getAndSet(now);
+            long elapsed = now - prev;
             if (elapsed < API_THROTTLE_INTERVAL_MS) {
                 Thread.sleep(API_THROTTLE_INTERVAL_MS - elapsed);
             }
-            lastApiCallTime = System.currentTimeMillis();
+        } finally {
+            throttle.release();
         }
 
         Client client = createClient();
@@ -583,12 +594,31 @@ public class YidaApiManager {
         int pageSize = 100;
         long totalPages = (totalCount + pageSize - 1) / pageSize;  // 向上取整
 
-        // 从第 2 页开始取
-        for (int page = 2; page <= totalPages; page++) {
-            request.setCurrentPage(page);
-            SearchFormDatasResponseBody pageData = searchFormData(request);
-            if (pageData != null && pageData.getData() != null) {
-                allData.addAll(pageData.getData());
+        // 从第 2 页开始并行取
+        int remainingPages = (int) totalPages - 1;
+        if (remainingPages > 0) {
+            List<CompletableFuture<List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>>> futures =
+                    new java.util.ArrayList<>(remainingPages);
+
+            for (int page = 2; page <= totalPages; page++) {
+                final int p = page;
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    try {
+                        SearchFormDatasRequest pageReq = newSearchRequest()
+                                .setFormUuid(request.getFormUuid())
+                                .setSearchFieldJson(request.getSearchFieldJson())
+                                .setPageSize(100)
+                                .setCurrentPage(p);
+                        SearchFormDatasResponseBody pd = searchFormData(pageReq);
+                        return pd != null && pd.getData() != null ? pd.getData() : Collections.emptyList();
+                    } catch (Exception e) {
+                        throw new RuntimeException("第" + p + "页查询失败", e);
+                    }
+                }));
+            }
+
+            for (CompletableFuture<List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> f : futures) {
+                allData.addAll(f.join());
             }
         }
 

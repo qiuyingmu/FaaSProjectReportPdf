@@ -67,12 +67,19 @@ export async function apiFetch(url, options = {}) {
     Object.assign(headers, fetchOptions.headers)
   }
 
+  // 构建请求
+  const controller = new AbortController()
+  const timeoutMs = 180000  // 180s 超时（月报大查询）
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
   const res = await fetch(resolveUrl(url), {
     credentials: 'include',
     method,
+    signal: controller.signal,
     ...fetchOptions,
     headers
   })
+  clearTimeout(timeoutId)
 
   // 401 → Session 过期，自动跳转登录
   if (res.status === 401 && !noRedirect) {
