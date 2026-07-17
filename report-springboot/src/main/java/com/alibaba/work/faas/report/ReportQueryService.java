@@ -244,11 +244,14 @@ public class ReportQueryService {
                         .collect(Collectors.toList());
             }
 
-            // 按日期降序排序（最新在前）
+            // 按日期降序排序（最新在前），日期相同时按 formInstanceId 稳定排序
             projectRecords.sort((a, b) -> {
                 long da = getFormDataDate(a, src.dateField);
                 long db = getFormDataDate(b, src.dateField);
-                return Long.compare(db, da); // 降序
+                int cmp = Long.compare(db, da); // 降序
+                if (cmp != 0) return cmp;
+                return String.valueOf(a.getFormInstanceId()).compareTo(
+                        String.valueOf(b.getFormInstanceId()));
             });
 
             sections.add(new ProjectReportData.SourceSection(
@@ -263,9 +266,31 @@ public class ReportQueryService {
             SearchFormDatasResponseBody.SearchFormDatasResponseBodyData row, String dateField) {
         if (row == null || row.getFormData() == null) return 0;
         Object val = row.getFormData().get(dateField);
+        if (val == null) return 0;
+        // 1. 数字（时间戳毫秒）
         if (val instanceof Number) return ((Number) val).longValue();
+        // 2. 字符串（数字或 ISO 日期）
         if (val instanceof String) {
-            try { return Long.parseLong((String) val); } catch (NumberFormatException e) { return 0; }
+            String s = ((String) val).trim();
+            if (s.isEmpty()) return 0;
+            // 尝试作为毫秒时间戳
+            try { return Long.parseLong(s); } catch (NumberFormatException ignored) {}
+            // 尝试解析 ISO 日期 (yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss)
+            try {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                return sdf.parse(s.substring(0, Math.min(10, s.length()))).getTime();
+            } catch (Exception ignored) {}
+        }
+        // 3. JSONArray（宜搭日期字段有时是数组）
+        if (val instanceof java.util.List) {
+            java.util.List<?> list = (java.util.List<?>) val;
+            for (Object item : list) {
+                if (item == null) continue;
+                if (item instanceof Number) return ((Number) item).longValue();
+                if (item instanceof String) {
+                    try { return Long.parseLong((String) item); } catch (NumberFormatException ignored) {}
+                }
+            }
         }
         return 0;
     }
