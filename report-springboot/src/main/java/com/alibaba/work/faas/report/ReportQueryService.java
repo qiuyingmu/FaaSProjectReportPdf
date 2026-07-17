@@ -2,6 +2,7 @@ package com.alibaba.work.faas.report;
 
 import com.alibaba.work.faas.report.model.ProjectReportData;
 import com.alibaba.work.faas.service.YidaApiManager;
+import com.aliyun.dingtalkyida_2_0.models.SearchFormDatasRequest;
 import com.aliyun.dingtalkyida_2_0.models.SearchFormDatasResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,7 @@ public class ReportQueryService {
             try {
                 String sfj = ReportHelper.buildDateOnlyFilter(src.dateField, start, end);
                 List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> records =
-                        api.searchAllFormData(src.formUuid, sfj);
+                        api.searchAllFormData(buildSortedRequest(src.formUuid, sfj, src.dateField));
                 return records != null ? records : Collections.emptyList();
             } catch (Exception e) {
                 throw new RuntimeException("查询[" + src.label + "]失败: " + e.getMessage(), e);
@@ -141,7 +142,7 @@ public class ReportQueryService {
                 String sfj = ReportHelper.buildDateProjectFilter(
                         src.dateField, src.personField, start, end, projectName);
                 List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> records =
-                        api.searchAllFormData(src.formUuid, sfj);
+                        api.searchAllFormData(buildSortedRequest(src.formUuid, sfj, src.dateField));
                 return records != null ? records : Collections.emptyList();
             } catch (Exception e) {
                 throw new RuntimeException("查询[" + src.label + "]失败: " + e.getMessage(), e);
@@ -303,5 +304,17 @@ public class ReportQueryService {
                 .map(SearchFormDatasResponseBody.SearchFormDatasResponseBodyData::getFormData)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    /** 构建带降序排序的查询请求（按日期字段倒序排列，最新在前） */
+    private SearchFormDatasRequest buildSortedRequest(
+            String formUuid, String searchFieldJson, String dateField) {
+        SearchFormDatasRequest req = api.newSearchRequest()
+                .setFormUuid(formUuid)
+                .setDynamicOrder("{\"" + dateField + "\":\"-\"}");
+        if (searchFieldJson != null && !searchFieldJson.isEmpty()) {
+            req.setSearchFieldJson(searchFieldJson);
+        }
+        return req;
     }
 }
