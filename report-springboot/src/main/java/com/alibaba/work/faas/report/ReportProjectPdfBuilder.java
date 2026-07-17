@@ -380,7 +380,7 @@ public class ReportProjectPdfBuilder {
 
             for (Map<String, ?> fd : items) {
                 String submitter = getEmpName(fd, "employeeField_ml6no8vd");
-                String date = getDateStr(fd, "dateField_ml6no8wb");
+                String date = getDateStr(fd, "dateField_ml6no8wf");
                 sb.append("          <tr><td>").append(escHtml(submitter))
                   .append("</td><td>").append(escHtml(date)).append("</td></tr>\n");
             }
@@ -428,7 +428,7 @@ public class ReportProjectPdfBuilder {
             String submitter = getEmpName(fd, "employeeField_mpuvsdc4");
             String level = ReportHelper.extractField(fd, "radioField_mpuvsdbx");
             String status = ReportHelper.extractField(fd, "radioField_mpumsa4p");
-            String date = getDateStr(fd, "dateField_mpuvsdbz");
+            String date = getDateStr(fd, "dateField_mnzhv2ul");
 
             String lvBg = "danger_".equals(level2class(level)) ? "#fef2f2"
                         : "major_".equals(level2class(level)) ? "#fff7ed" : "#eef2ff";
@@ -509,9 +509,9 @@ public class ReportProjectPdfBuilder {
 
     private static String getDateField(String key) {
         switch (key) {
-            case "log":     return "dateField_mjjngk7x";
-            case "safeLog": return "dateField_mjjngk7x";
-            case "station": return "dateField_mjl61srf";
+            case "log":     return "dateField_mkat24th";
+            case "safeLog": return "dateField_mkauls9o";
+            case "station": return "dateField_mjjitv2s";
             default:        return "";
         }
     }

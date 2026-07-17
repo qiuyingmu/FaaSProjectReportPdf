@@ -244,11 +244,30 @@ public class ReportQueryService {
                         .collect(Collectors.toList());
             }
 
+            // 按日期降序排序（最新在前）
+            projectRecords.sort((a, b) -> {
+                long da = getFormDataDate(a, src.dateField);
+                long db = getFormDataDate(b, src.dateField);
+                return Long.compare(db, da); // 降序
+            });
+
             sections.add(new ProjectReportData.SourceSection(
                     src.key, src.label, src.color,
                     projectRecords.size(), extractFormDataList(projectRecords)));
         }
         return sections;
+    }
+
+    /** 提取记录中日期字段的时间戳（毫秒），用于排序。找不到时返回 0。 */
+    private static long getFormDataDate(
+            SearchFormDatasResponseBody.SearchFormDatasResponseBodyData row, String dateField) {
+        if (row == null || row.getFormData() == null) return 0;
+        Object val = row.getFormData().get(dateField);
+        if (val instanceof Number) return ((Number) val).longValue();
+        if (val instanceof String) {
+            try { return Long.parseLong((String) val); } catch (NumberFormatException e) { return 0; }
+        }
+        return 0;
     }
 
     /** 从 SearchFormDatasResponseBody 列表中提取 formData Map。 */
