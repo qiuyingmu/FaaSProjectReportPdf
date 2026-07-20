@@ -20,7 +20,7 @@
       <a href="https://beian.miit.gov.cn/" target="_blank" style="color:rgba(255,255,255,0.4); text-decoration:none;">黔ICP备19003726号-1</a>
       &nbsp;&nbsp;|&nbsp;&nbsp;
       <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52011502002024" target="_blank" style="color:rgba(255,255,255,0.4); text-decoration:none;">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAABWWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS40LjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDx0aWZmOkNvbXByZXNzaW9uPjE8L3RpZmY6Q29tcHJlc3Npb24+CiAgICAgICAgIDx0aWZmOlBPcmlkZW50YXRpb24+MTwvdGlmZjpQb3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgwldOnJAAAAXElEQVQ4EWNg+M9AAWBigALKABPAJ4EVYGJiYqBME4LhBQsWMEA1MTAwMFBkCLIAJiYmBopMGUAGIFmBpQHZCv5TbACyCxgYGCj2ApYwQBkITKA2YCsFKBUBsgBz8RqFgAes+QAAAABJRU5ErkJggg==" style="vertical-align:middle; margin-right:4px;" />
+        <img src="/beian.png" style="vertical-align:middle; margin-right:4px;" />
         贵公网安备 52011502002024号
       </a>
       &nbsp;&nbsp;|&nbsp;&nbsp;<span>贵州建工监理咨询有限公司</span>
