@@ -1,18 +1,19 @@
 package com.alibaba.work.faas.service;
 
 import com.alibaba.work.faas.entity.ApiKey;
+import com.alibaba.work.faas.entity.ApiKeyUsageLog;
 import com.alibaba.work.faas.repository.ApiKeyRepository;
+import com.alibaba.work.faas.repository.ApiKeyUsageLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * API Key 管理服务。
@@ -24,70 +25,62 @@ public class ApiKeyService {
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyService.class);
 
-    /** Key 前缀：便于日志筛选、辨识 */
+    /** Key 前缀 */
     private static final String KEY_PREFIX = "yida-";
 
     private static final int RANDOM_BYTES = 24; // 24 bytes = 48 hex chars
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
     private final ApiKeyRepository apiKeyRepository;
+    private final ApiKeyUsageLogRepository usageLogRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final SecureRandom random = new SecureRandom();
 
-    /** 验证用的回退 Key（.env 中配置的 yida.connector.api.key），向后兼容旧部署 */
-    @Autowired(required = false)
-    @org.springframework.beans.factory.annotation.Value("${yida.connector.api.key:}")
-    private String fallbackApiKey;
-
-    public ApiKeyService(ApiKeyRepository apiKeyRepository) {
+    public ApiKeyService(ApiKeyRepository apiKeyRepository,
+                          ApiKeyUsageLogRepository usageLogRepository) {
         this.apiKeyRepository = apiKeyRepository;
+        this.usageLogRepository = usageLogRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
     /**
-     * 验证 API Key：先尝试数据库（启用状态），再回退到 .env 配置的 Key（兼容老部署）。
-     *
-     * @param apiKey 客户端传来的明文 Key
-     * @return 是否有效
+     * 验证 API Key：扫描数据库所有启用状态的 Key。
+     * 命中后自动累加当日调用次数 +1，更新总次数 +1，更新最后使用时间。
      */
+    @Transactional
     public boolean verifyApiKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
             return false;
         }
 
-        // 1. 数据库扫描（启用状态）
         for (ApiKey stored : apiKeyRepository.findAllByEnabledTrue()) {
             if (passwordEncoder.matches(apiKey, stored.getKeyHash())) {
-                // 异步更新最后使用时间（不阻塞请求）
-                updateLastUsedAsync(stored.getId());
+                recordUsage(stored.getId());
                 return true;
             }
         }
-
-        // 2. .env 回退（兼容老部署）
-        if (fallbackApiKey != null && !fallbackApiKey.isBlank() && fallbackApiKey.equals(apiKey)) {
-            return true;
-        }
-
         return false;
     }
 
-    private void updateLastUsedAsync(Long id) {
+    /** 记录一次调用：当日 +1、总次数 +1、最后使用时间 now */
+    private void recordUsage(Long keyId) {
         try {
-            apiKeyRepository.findById(id).ifPresent(k -> {
+            // 单条原子 SQL：当天 +1
+            usageLogRepository.incrementDaily(keyId, LocalDate.now());
+
+            // 更新总次数 +1 和最后使用时间
+            apiKeyRepository.findById(keyId).ifPresent(k -> {
+                k.setTotalRequests(k.getTotalRequests() + 1);
                 k.setLastUsedAt(Instant.now());
                 apiKeyRepository.save(k);
             });
         } catch (Exception e) {
-            log.warn("[ApiKeyService] 更新 lastUsedAt 失败: {}", e.getMessage());
+            log.warn("[ApiKeyService] 记录调用统计失败: {}", e.getMessage());
         }
     }
 
     /**
      * 创建新 API Key。
-     *
-     * @param name 用户指定的 Key 名称
-     * @return 创建结果（包含完整 Key，仅此一次返回）
      */
     @Transactional
     public CreateResult create(String name) {
@@ -101,13 +94,14 @@ public class ApiKeyService {
         entity.setKeyHash(passwordEncoder.encode(fullKey));
         entity.setCreatedAt(Instant.now());
         entity.setEnabled(true);
+        entity.setTotalRequests(0);
         entity = apiKeyRepository.save(entity);
 
         log.info("[ApiKeyService] 创建新 API Key: id={}, name={}, prefix={}", entity.getId(), name, prefix);
         return new CreateResult(entity, fullKey);
     }
 
-    /** 列出所有 Key（不含明文） */
+    /** 列出所有 Key（不含明文哈希） */
     public List<ApiKey> list() {
         return apiKeyRepository.findAllByOrderByCreatedAtDesc();
     }
@@ -125,7 +119,15 @@ public class ApiKeyService {
     @Transactional
     public void delete(Long id) {
         apiKeyRepository.deleteById(id);
+        // 同步删除统计记录
+        usageLogRepository.findRange(id, LocalDate.of(1970, 1, 1), LocalDate.of(2999, 12, 31))
+                .forEach(log -> usageLogRepository.deleteById(log.getId()));
         log.info("[ApiKeyService] 删除 API Key: id={}", id);
+    }
+
+    /** 查询指定 Key 在指定日期范围内的每日统计 */
+    public List<ApiKeyUsageLog> getStats(Long keyId, LocalDate from, LocalDate to) {
+        return usageLogRepository.findRange(keyId, from, to);
     }
 
     /** 生成随机 Key：yida- + 48 hex 字符 */

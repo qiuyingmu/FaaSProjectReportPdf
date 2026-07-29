@@ -1,9 +1,12 @@
 package com.alibaba.work.faas.controller;
 
 import com.alibaba.work.faas.entity.ApiKey;
+import com.alibaba.work.faas.entity.ApiKeyUsageLog;
 import com.alibaba.work.faas.service.ApiKeyService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -55,5 +58,28 @@ public class ApiKeyController {
     public Map<String, Object> delete(@PathVariable Long id) {
         apiKeyService.delete(id);
         return Map.of("success", true);
+    }
+
+    /**
+     * 查询 Key 的每日调用统计。
+     * GET /api/admin/api-keys/{id}/stats?from=2026-07-01&to=2026-07-29
+     */
+    @GetMapping("/{id}/stats")
+    public Map<String, Object> stats(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        List<ApiKeyUsageLog> records = apiKeyService.getStats(id, from, to);
+        // 填充没有数据的日期（保持图表连续）
+        List<Map<String, Object>> daily = new java.util.ArrayList<>();
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            LocalDate date = d;
+            long cnt = records.stream()
+                    .filter(r -> r.getUsageDate().equals(date))
+                    .mapToLong(ApiKeyUsageLog::getCount)
+                    .sum();
+            daily.add(Map.of("date", date.toString(), "count", cnt));
+        }
+        return Map.of("daily", daily);
     }
 }

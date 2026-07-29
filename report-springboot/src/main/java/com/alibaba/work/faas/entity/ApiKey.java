@@ -41,6 +41,10 @@ public class ApiKey {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    /** 总调用次数（生命周期） */
+    @Column(name = "total_requests", nullable = false)
+    private long totalRequests = 0;
+
     // ---- getters / setters ----
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -62,4 +66,7 @@ public class ApiKey {
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public long getTotalRequests() { return totalRequests; }
+    public void setTotalRequests(long totalRequests) { this.totalRequests = totalRequests; }
 }

@@ -12,27 +12,35 @@
     </p>
 
     <el-table :data="keys" stripe v-loading="loading">
-      <el-table-column prop="name" label="名称" min-width="160" />
-      <el-table-column label="Key" min-width="220">
+      <el-table-column prop="name" label="名称" min-width="140" />
+      <el-table-column label="Key" min-width="200">
         <template #default="{ row }">
           <code style="background:#f5f7fa; padding:2px 8px; border-radius:4px; font-size:12px;">{{ row.keyPrefix }}</code>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="100">
+      <el-table-column label="状态" width="90">
         <template #default="{ row }">
           <el-tag :type="row.enabled ? 'success' : 'info'">
             {{ row.enabled ? '启用' : '已禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="创建时间" width="170">
+      <el-table-column label="总调用" width="100" sortable :sort-method="(a,b)=>a.totalRequests-b.totalRequests">
+        <template #default="{ row }">
+          <span style="font-weight:600; color:#3b82f6;">{{ row.totalRequests }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="创建时间" width="160">
         <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
       </el-table-column>
-      <el-table-column label="最后使用" width="170">
+      <el-table-column label="最后使用" width="160">
         <template #default="{ row }">{{ row.lastUsedAt ? formatTime(row.lastUsedAt) : '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
+          <el-button size="small" type="primary" @click="showStats(row)">
+            <el-icon><DataLine /></el-icon>统计
+          </el-button>
           <el-button size="small" :type="row.enabled ? 'warning' : 'success'" @click="toggle(row)">
             {{ row.enabled ? '禁用' : '启用' }}
           </el-button>
@@ -68,17 +76,45 @@
         <el-button @click="showFullKeyDialog = false">已保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 统计弹窗 -->
+    <el-dialog v-model="showStatsDialog" :title="statsTitle" width="700px">
+      <div class="stats-summary">
+        <div class="stat-item">
+          <div class="stat-label">总调用次数</div>
+          <div class="stat-value">{{ statsTotal }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">统计区间</div>
+          <div class="stat-value" style="font-size:14px;">{{ statsRange }}</div>
+        </div>
+      </div>
+      <v-chart class="chart" :option="chartOption" autoresize />
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, DataLine } from '@element-plus/icons-vue'
+import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart, BarChart } from 'echarts/charts'
+import {
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent
+} from 'echarts/components'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api.js'
 
+// 注册 ECharts 组件
+use([CanvasRenderer, LineChart, BarChart, TitleComponent, TooltipComponent, GridComponent, LegendComponent])
+
 export default {
   name: 'ApiKeyManager',
-  components: { Plus },
+  components: { Plus, DataLine, VChart },
   data() {
     return {
       keys: [],
@@ -87,7 +123,13 @@ export default {
       showCreateDialog: false,
       showFullKeyDialog: false,
       newName: '',
-      createdKey: ''
+      createdKey: '',
+      // 统计弹窗
+      showStatsDialog: false,
+      statsTitle: '',
+      statsRange: '',
+      statsTotal: 0,
+      chartOption: { tooltip: { trigger: 'axis' }, xAxis: { type: 'category' }, yAxis: { type: 'value' }, series: [] }
     }
   },
   mounted() { this.load() },
@@ -130,7 +172,7 @@ export default {
     },
     async confirmDelete(row) {
       try {
-        await ElMessageBox.confirm(`确认删除 Key "${row.name}"？删除后该 Key 立即失效。`, '删除确认', {
+        await ElMessageBox.confirm(`确认删除 Key "${row.name}"？删除后该 Key 立即失效，统计记录也会被清除。`, '删除确认', {
           type: 'warning',
           confirmButtonText: '删除',
           cancelButtonText: '取消'
@@ -150,6 +192,65 @@ export default {
         ElMessage.warning('复制失败，请手动选择复制')
       }
     },
+    async showStats(row) {
+      // 默认 30 天
+      const to = new Date()
+      const from = new Date()
+      from.setDate(to.getDate() - 29)
+      const fmt = d => d.toISOString().slice(0, 10)
+      const fromStr = fmt(from)
+      const toStr = fmt(to)
+
+      try {
+        const data = await apiGet(`/api/admin/api-keys/${row.id}/stats?from=${fromStr}&to=${toStr}`)
+        const daily = data.daily || []
+
+        this.statsTitle = `${row.name} - 调用统计`
+        this.statsRange = `${fromStr} 至 ${toStr}`
+        this.statsTotal = daily.reduce((s, d) => s + d.count, 0)
+
+        this.chartOption = {
+          tooltip: {
+            trigger: 'axis',
+            formatter: p => `${p[0].axisValue}<br/>请求次数: <strong>${p[0].data}</strong>`
+          },
+          grid: { left: 50, right: 20, top: 20, bottom: 30 },
+          xAxis: {
+            type: 'category',
+            data: daily.map(d => d.date.slice(5)),
+            boundaryGap: false,
+            axisLine: { lineStyle: { color: '#dcdfe6' } },
+            axisLabel: { color: '#909399', fontSize: 11 }
+          },
+          yAxis: {
+            type: 'value',
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { lineStyle: { color: '#f0f2f5', type: 'dashed' } },
+            axisLabel: { color: '#909399', fontSize: 11 }
+          },
+          series: [{
+            name: '请求次数',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            data: daily.map(d => d.count),
+            areaStyle: {
+              color: {
+                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: 'rgba(59,130,246,0.4)' }, { offset: 1, color: 'rgba(59,130,246,0)' }]
+              }
+            },
+            lineStyle: { color: '#3b82f6', width: 2 },
+            itemStyle: { color: '#3b82f6' }
+          }]
+        }
+        this.showStatsDialog = true
+      } catch (e) {
+        ElMessage.error('加载统计失败')
+      }
+    },
     formatTime(s) {
       if (!s) return ''
       const d = new Date(s)
@@ -163,4 +264,9 @@ export default {
 <style scoped>
 .api-key-manager { background:#fff; padding:20px; border-radius:8px; }
 .header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.stats-summary { display:flex; gap:32px; padding:8px 0 16px; border-bottom:1px solid #f0f2f5; margin-bottom:12px; }
+.stat-item { flex:1; }
+.stat-label { font-size:12px; color:#909399; margin-bottom:4px; }
+.stat-value { font-size:28px; font-weight:600; color:#3b82f6; }
+.chart { height: 320px; }
 </style>
