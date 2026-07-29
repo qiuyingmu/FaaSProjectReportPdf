@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 审批记录查询接口 —— 供宜搭 HTTP 连接器回调。
@@ -37,6 +38,15 @@ import java.util.Map;
 public class ApprovalController {
 
     private static final Logger log = LoggerFactory.getLogger(ApprovalController.class);
+
+    /** 限流：每分钟每个 Key 最多 60 次请求 */
+    private static final long RATE_LIMIT_PER_MINUTE = 60;
+
+    /** 限流窗口：毫秒 */
+    private static final long WINDOW_MS = 60_000L;
+
+    /** Key → { 窗口起始时间, 当前计数 } */
+    private final ConcurrentHashMap<String, long[]> rateLimitMap = new ConcurrentHashMap<>();
 
     private final ApprovalService approvalService;
 
@@ -70,6 +80,13 @@ public class ApprovalController {
                     .body(Map.of("success", false, "message", "API Key 无效"));
         }
 
+        // ---- 2.5 限流 ----
+        if (isRateLimited(apiKey)) {
+            log.warn("[ApprovalController] API Key 被限流: {}", keyPrefix(apiKey));
+            return ResponseEntity.status(429)
+                    .body(Map.of("success", false, "message", "请求过于频繁，请稍后重试"));
+        }
+
         // ---- 3. 提取 processInstanceId（兼容 Query 参数和 Body） ----
         String processInstanceId = processInstanceIdParam;
         if (isEmpty(processInstanceId) && body != null) {
@@ -101,5 +118,25 @@ public class ApprovalController {
             if (v != null && !v.isBlank()) return v;
         }
         return null;
+    }
+
+    /** 滑动窗口限流：每分钟每 Key 最多 RATE_LIMIT_PER_MINUTE 次 */
+    private boolean isRateLimited(String apiKey) {
+        long now = System.currentTimeMillis();
+        long[] entry = rateLimitMap.compute(apiKey, (k, v) -> {
+            if (v == null || now - v[0] >= WINDOW_MS) {
+                return new long[]{now, 1};
+            }
+            v[1]++;
+            return v;
+        });
+        return entry[1] > RATE_LIMIT_PER_MINUTE;
+    }
+
+    /** 取 Key 前缀（前 16 位）用于日志，避免泄露完整 Key */
+    private static String keyPrefix(String apiKey) {
+        return apiKey != null && apiKey.length() >= 16
+                ? apiKey.substring(0, 16) + "..."
+                : "(short)";
     }
 }

@@ -58,6 +58,16 @@ services:
       # 关键：bind mount 最新 JAR 到容器，每次 docker compose up -d 都是最新代码
       # 无需 --build，无需清理镜像，强制使用宿主机最新 JAR
       - ./report-springboot-1.0.0.jar:/app/app.jar:ro
+    # 健康检查：每 30s 轮询 Actuator health 端点
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      report-db:
+        condition: service_healthy
     networks:
       - report-net
 
