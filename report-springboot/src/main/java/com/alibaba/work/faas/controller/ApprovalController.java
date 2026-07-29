@@ -37,18 +37,16 @@ public class ApprovalController {
      *
      * <p>宜搭 HTTP 连接器端配置：</p>
      * <ul>
-     *   <li>URL: POST http://your-server/api/yida/approval/records</li>
+     *   <li>URL: POST https://realtimevideo.jgjl.cn/report/api/yida/approval/records</li>
      *   <li>Headers: X-API-Key = {.env 中配置的 yida.connector.api.key}</li>
      *   <li>Body (JSON):</li>
      * </ul>
      * <pre>
      * {
-     *   "appType": "APP_PBKT0xxx",
-     *   "systemToken": "hexxxx",
-     *   "userId": "user123",
      *   "processInstanceId": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530"
      * }
      * </pre>
+     * <p>appType/systemToken/userId 由后端自动从系统配置读取，宜搭无需传入。</p>
      */
     @PostMapping("/approval/records")
     public ResponseEntity<?> queryApprovalRecords(
@@ -62,27 +60,17 @@ public class ApprovalController {
                     .body(Map.of("success", false, "message", "API Key 无效"));
         }
 
-        // ---- 2. 参数校验 ----
-        if (body == null) {
+        // ---- 2. 参数校验（只需 processInstanceId） ----
+        if (body == null || isEmpty(body.get("processInstanceId"))) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", "请求体不能为空"));
+                    .body(Map.of("success", false, "message", "需要 processInstanceId"));
         }
 
-        String appType = body.get("appType");
-        String systemToken = body.get("systemToken");
-        String userId = body.get("userId");
         String processInstanceId = body.get("processInstanceId");
-
-        if (isEmpty(appType) || isEmpty(systemToken) || isEmpty(userId) || isEmpty(processInstanceId)) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false,
-                            "message", "参数不完整，需要 appType/systemToken/userId/processInstanceId"));
-        }
 
         // ---- 3. 查询审批记录 ----
         try {
-            String result = approvalService.queryApprovalRecords(
-                    appType, systemToken, userId, processInstanceId);
+            String result = approvalService.queryApprovalRecords(processInstanceId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("[ApprovalController] 查询审批记录异常: {}", e.getMessage(), e);

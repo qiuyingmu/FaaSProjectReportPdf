@@ -182,6 +182,12 @@ public class YidaApiManager {
     /** 操作人钉钉 userId（可在运行时通过 {@link #setDefaultUserId} 覆盖） */
     private String defaultUserId = DEFAULT_USER_ID;
 
+    /** 获取宜搭应用编码 */
+    public String getProductionSystemAppType() { return productionSystemAppType; }
+    /** 获取宜搭应用密钥 */
+    public String getProductionSystemSystemToken() { return productionSystemSystemToken; }
+    // getDefaultUserId() 定义在下方 protected 区域
+
 
     // ========================================
     //  Token 管理（本地缓存 JVM 内存级）

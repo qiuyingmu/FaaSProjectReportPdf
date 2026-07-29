@@ -63,16 +63,17 @@ public class ApprovalService {
 
     /**
      * 查询审批记录（钉钉 Yida 1.0 API）。
+     * <p>appType/systemToken/userId 自动从系统配置读取，仅需传 processInstanceId。</p>
      *
-     * @param appType            宜搭应用编码
-     * @param systemToken        宜搭系统 Token
-     * @param userId             用户 ID
-     * @param processInstanceId  审批流程实例 ID
+     * @param processInstanceId 审批流程实例 ID
      * @return 审批记录 JSON 字符串（由钉钉 API 直接返回）
      * @throws Exception 查询失败时抛出
      */
-    public String queryApprovalRecords(String appType, String systemToken,
-                                        String userId, String processInstanceId) throws Exception {
+    public String queryApprovalRecords(String processInstanceId) throws Exception {
+        // 0. 自动读取系统配置
+        String appType = yidaApiManager.getProductionSystemAppType();
+        String systemToken = yidaApiManager.getProductionSystemSystemToken();
+        String userId = yidaApiManager.getDefaultUserId();
         // 1. 获取 access token
         String accessToken = yidaApiManager.getAccessToken();
 
