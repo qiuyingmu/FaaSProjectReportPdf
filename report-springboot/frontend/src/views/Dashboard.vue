@@ -41,6 +41,9 @@
           <el-menu-item index="users">
             <el-icon><User /></el-icon><span>管理员</span>
           </el-menu-item>
+          <el-menu-item index="apikeys">
+            <el-icon><Key /></el-icon><span>API Key</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -51,6 +54,7 @@
         <ReportGenerator v-show="activeTab === 'generate'" />
         <ScheduleManager v-show="activeTab === 'schedule'" />
         <UserManager v-show="activeTab === 'users'" :currentUser="username" />
+        <ApiKeyManager v-show="activeTab === 'apikeys'" />
       </el-main>
     </el-container>
   </el-container>
@@ -68,17 +72,18 @@
 </template>
 
 <script>
-import { DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User } from '@element-plus/icons-vue'
+import { DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key } from '@element-plus/icons-vue'
 import SystemOverview from '../components/SystemOverview.vue'
 import LogViewer from '../components/LogViewer.vue'
 import OperationLogs from '../components/OperationLogs.vue'
 import ReportGenerator from '../components/ReportGenerator.vue'
 import ScheduleManager from '../components/ScheduleManager.vue'
 import UserManager from '../components/UserManager.vue'
+import ApiKeyManager from '../components/ApiKeyManager.vue'
 import { apiGet, apiFetch } from '../utils/api.js'
 
 export default {
-  components: { SystemOverview, LogViewer, OperationLogs, ReportGenerator, ScheduleManager, UserManager, DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User },
+  components: { SystemOverview, LogViewer, OperationLogs, ReportGenerator, ScheduleManager, UserManager, ApiKeyManager, DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key },
   data() {
     return { username: 'admin', activeTab: 'overview' }
   },

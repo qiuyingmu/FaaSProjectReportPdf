@@ -1,12 +1,9 @@
 package com.alibaba.work.faas.service;
 
-import com.alibaba.work.faas.service.YidaApiManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -35,30 +32,19 @@ public class ApprovalService {
             .connectTimeout(java.time.Duration.ofSeconds(10))
             .build();
 
-    /** 用于 Yida HTTP 连接器鉴权的 API Key（从 Spring 环境/ .env 注入） */
-    @Value("${yida.connector.api.key:}")
-    private String connectorApiKey;
-
     private final YidaApiManager yidaApiManager;
+    private final ApiKeyService apiKeyService;
 
-    public ApprovalService(YidaApiManager yidaApiManager) {
+    public ApprovalService(YidaApiManager yidaApiManager, ApiKeyService apiKeyService) {
         this.yidaApiManager = yidaApiManager;
-    }
-
-    @PostConstruct
-    public void init() {
-        if (connectorApiKey == null || connectorApiKey.isEmpty()) {
-            log.warn("[ApprovalService] yida.connector.api.key 未配置，连接器鉴权功能不可用");
-        } else {
-            log.info("[ApprovalService] 连接器 API Key 已配置");
-        }
+        this.apiKeyService = apiKeyService;
     }
 
     /**
-     * 验证连接器请求的 API Key。
+     * 验证 API Key —— 委托给 ApiKeyService（数据库 BCrypt 校验 + .env 回退）。
      */
     public boolean verifyApiKey(String apiKey) {
-        return !connectorApiKey.isEmpty() && connectorApiKey.equals(apiKey);
+        return apiKeyService.verifyApiKey(apiKey);
     }
 
     /**
