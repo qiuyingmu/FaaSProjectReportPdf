@@ -120,7 +120,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .csrf()
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .ignoringAntMatchers("/admin/login")
-                .ignoringAntMatchers("/admin/logout");
+                .ignoringAntMatchers("/admin/logout")
+                .ignoringAntMatchers("/api/yida/**");
     }
 
     // ========================================
