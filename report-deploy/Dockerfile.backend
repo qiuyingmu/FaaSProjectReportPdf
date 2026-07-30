@@ -6,6 +6,9 @@
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+# 安装 curl（用于健康检查）
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # 创建一个占位 JAR，真实 JAR 会被 docker-compose bind mount 覆盖
 COPY report-springboot-1.0.0.jar app.jar.original
 
