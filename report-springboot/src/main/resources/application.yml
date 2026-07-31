@@ -104,6 +104,11 @@ report:
   admin:
     password: ${REPORT_ADMIN_PASSWORD:admin123}
   enabled: true
+  # ===== 可配置化拓展开关（默认关闭，保持旧行为）=====
+  # use-config-sources: true → 数据源从 form_configs 表读取（管理 UI 可增删改）
+  # use-config-app: true     → 应用凭证从 app_configs 表读取（无配置时回退 .env）
+  use-config-sources: ${REPORT_USE_CONFIG_SOURCES:false}
+  use-config-app: ${REPORT_USE_CONFIG_APP:false}
 
 # ========================================
 #  开发环境（H2 Console 调试用）

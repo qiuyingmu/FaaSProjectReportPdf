@@ -1,5 +1,7 @@
 package com.alibaba.work.faas.service;
 
+import com.alibaba.work.faas.entity.AppConfig;
+
 import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
 import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
 import com.aliyun.dingtalkyida_2_0.Client;
@@ -182,10 +184,46 @@ public class YidaApiManager {
     /** 操作人钉钉 userId（可在运行时通过 {@link #setDefaultUserId} 覆盖） */
     private String defaultUserId = DEFAULT_USER_ID;
 
-    /** 获取宜搭应用编码 */
-    public String getProductionSystemAppType() { return productionSystemAppType; }
-    /** 获取宜搭应用密钥 */
-    public String getProductionSystemSystemToken() { return productionSystemSystemToken; }
+    // ========================================
+    //  可配置化拓展：优先读取数据库 app_configs 表
+    // ========================================
+
+    /** 是否使用数据库配置的应用凭证（默认 false = .env/硬编码，true = app_configs 表） */
+    @org.springframework.beans.factory.annotation.Value("${report.use-config-app:false}")
+    private boolean useConfigApp;
+
+    /** 应用配置服务（@Lazy 打破与 AppConfigService 的循环依赖） */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private AppConfigService appConfigService;
+
+    /**
+     * 从数据库应用配置读取指定字段（use-config-app=true 且配置存在时）。
+     * 返回 null 表示不使用数据库配置，回退 .env/硬编码。
+     */
+    private String fromAppConfig(java.util.function.Function<AppConfig, String> getter) {
+        try {
+            if (useConfigApp && appConfigService != null) {
+                AppConfig ac = appConfigService.getActiveConfig();
+                return getter.apply(ac);
+            }
+        } catch (Exception e) {
+            log.warn("[YidaApiManager] 读取数据库应用配置失败，回退 .env/硬编码: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /** 获取宜搭应用编码（可配置化优先） */
+    public String getProductionSystemAppType() {
+        String v = fromAppConfig(AppConfig::getAppType);
+        return v != null ? v : productionSystemAppType;
+    }
+
+    /** 获取宜搭应用密钥（可配置化优先） */
+    public String getProductionSystemSystemToken() {
+        String v = fromAppConfig(AppConfig::getSystemToken);
+        return v != null ? v : productionSystemSystemToken;
+    }
     // getDefaultUserId() 定义在下方 protected 区域
 
 
@@ -269,7 +307,8 @@ public class YidaApiManager {
      * 获取当前设置的默认操作人 userId。
      */
     public String getDefaultUserId() {
-        return defaultUserId;
+        String v = fromAppConfig(AppConfig::getUserId);
+        return v != null ? v : defaultUserId;
     }
 
 

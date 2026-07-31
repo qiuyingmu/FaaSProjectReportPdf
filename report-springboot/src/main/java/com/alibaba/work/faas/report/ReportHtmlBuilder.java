@@ -168,9 +168,11 @@ public class ReportHtmlBuilder {
               .append("    <div class=\"project-block-content open\" style=\"display:block;\">\n")
               .append("      <div class=\"source-mini-row\" style=\"grid-template-columns:repeat(6,1fr);\">\n");
 
-            // 6 个数据源卡片
-            for (int si = 0; si < ReportConstants.SOURCES.size(); si++) {
-                ReportConstants.SourceDef src = ReportConstants.SOURCES.get(si);
+            // 数据源卡片（可配置化：优先 data.sources，null 回退常量）
+            java.util.List<ReportConstants.SourceDef> srcList =
+                    data.getSources() != null ? data.getSources() : ReportConstants.SOURCES;
+            for (int si = 0; si < srcList.size(); si++) {
+                ReportConstants.SourceDef src = srcList.get(si);
                 Integer count = p.getSourceCounts().getOrDefault(src.key, 0);
                 sb.append("        <div class=\"source-mini-card\">\n")
                   .append("          <div class=\"s-name\" style=\"font-size:12px;\">").append(src.label).append("</div>\n")

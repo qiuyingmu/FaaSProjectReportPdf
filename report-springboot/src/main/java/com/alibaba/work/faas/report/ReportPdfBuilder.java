@@ -216,9 +216,11 @@ public class ReportPdfBuilder {
                   .append("        <table class=\"source-grid\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n")
                   .append("          <tr>\n");
 
-                // 6 个数据源卡片，一行全部展示
+                // 数据源卡片（可配置化：优先 data.sources，null 回退常量）
                 int si = 0;
-                for (ReportConstants.SourceDef src : ReportConstants.SOURCES) {
+                java.util.List<ReportConstants.SourceDef> srcList =
+                        data.getSources() != null ? data.getSources() : ReportConstants.SOURCES;
+                for (ReportConstants.SourceDef src : srcList) {
                     Integer count = p.getSourceCounts().getOrDefault(src.key, 0);
                     if (si > 0 && si % 6 == 0) {
                         sb.append("          </tr>\n").append("          <tr>\n");

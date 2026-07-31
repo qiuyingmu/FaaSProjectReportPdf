@@ -102,7 +102,7 @@ public class PlatformReportStrategy implements ReportStrategy {
         for (ReportQueryService.ProjectInfo pi : allProjects) {
             Map<String, Integer> sourceCounts = new LinkedHashMap<>();
             int projectTotal = 0;
-            for (ReportConstants.SourceDef src : ReportConstants.SOURCES) {
+            for (ReportConstants.SourceDef src : queryService.resolveSources()) {
                 Map<String, Integer> projectCounts = sourceMatrix.get(src.key);
                 int count = projectCounts != null ? projectCounts.getOrDefault(pi.name, 0) : 0;
                 sourceCounts.put(src.key, count);
@@ -128,7 +128,8 @@ public class PlatformReportStrategy implements ReportStrategy {
                 range,
                 projects,
                 grandTotal,
-                label   // 传入 periodLabel，Builder 直接从 data 读取
+                label,   // 传入 periodLabel，Builder 直接从 data 读取
+                queryService.resolveSources()   // 传入实际数据源（可配置化）
         );
     }
 

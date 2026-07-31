@@ -27,19 +27,29 @@ public class ReportData {
     /** 总记录数 */
     private final int totalRecords;
 
+    /** 实际使用的数据源列表（可配置化拓展），null 时 Builder 回退 ReportConstants.SOURCES */
+    private final List<ReportConstants.SourceDef> sources;
+
     public ReportData(String timeRangeLabel, String periodName, String rangeKey,
                       List<ProjectStat> projects, int totalRecords) {
-        this(timeRangeLabel, periodName, rangeKey, projects, totalRecords, null);
+        this(timeRangeLabel, periodName, rangeKey, projects, totalRecords, null, null);
     }
 
     public ReportData(String timeRangeLabel, String periodName, String rangeKey,
                       List<ProjectStat> projects, int totalRecords, String periodLabel) {
+        this(timeRangeLabel, periodName, rangeKey, projects, totalRecords, periodLabel, null);
+    }
+
+    public ReportData(String timeRangeLabel, String periodName, String rangeKey,
+                      List<ProjectStat> projects, int totalRecords, String periodLabel,
+                      List<ReportConstants.SourceDef> sources) {
         this.timeRangeLabel = timeRangeLabel;
         this.periodName = periodName;
         this.rangeKey = rangeKey;
         this.projects = projects;
         this.totalRecords = totalRecords;
         this.periodLabel = periodLabel;
+        this.sources = sources;
     }
 
     public String getTimeRangeLabel() { return timeRangeLabel; }
@@ -49,6 +59,8 @@ public class ReportData {
     public String getPeriodLabel() { return periodLabel; }
     public List<ProjectStat> getProjects() { return projects; }
     public int getTotalRecords() { return totalRecords; }
+    /** 实际使用的数据源列表；null 表示使用默认常量（ReportConstants.SOURCES） */
+    public List<ReportConstants.SourceDef> getSources() { return sources; }
 
 
     // ========================================

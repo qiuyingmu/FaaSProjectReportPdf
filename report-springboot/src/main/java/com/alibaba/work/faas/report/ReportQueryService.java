@@ -1,11 +1,14 @@
 package com.alibaba.work.faas.report;
 
+import com.alibaba.work.faas.entity.FormConfig;
 import com.alibaba.work.faas.report.model.ProjectReportData;
+import com.alibaba.work.faas.service.FormConfigService;
 import com.alibaba.work.faas.service.YidaApiManager;
 import com.aliyun.dingtalkyida_2_0.models.SearchFormDatasRequest;
 import com.aliyun.dingtalkyida_2_0.models.SearchFormDatasResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -17,6 +20,10 @@ import java.util.stream.Collectors;
  *
  * <p>统一提供：项目信息查询、6 个数据源并行查询、项目过滤、SourceSection 构建。</p>
  *
+ * <p><b>可配置化拓展</b>：当 {@code report.use-config-sources=true} 时，数据源列表
+ * 从数据库 {@code form_configs} 表读取（{@link FormConfigService}）；
+ * 默认 false 时使用旧常量 {@link ReportConstants#SOURCES}，行为零变化。</p>
+ *
  * @author Senior Developer
  * 创建于 2026/07/09
  */
@@ -26,9 +33,35 @@ public class ReportQueryService {
     private static final Logger log = LoggerFactory.getLogger(ReportQueryService.class);
 
     private final YidaApiManager api;
+    private final FormConfigService formConfigService;
 
-    public ReportQueryService(YidaApiManager api) {
+    /** 是否使用数据库配置的数据源（默认 false = 旧常量，true = form_configs 表） */
+    @Value("${report.use-config-sources:false}")
+    private boolean useConfigSources;
+
+    public ReportQueryService(YidaApiManager api, FormConfigService formConfigService) {
         this.api = api;
+        this.formConfigService = formConfigService;
+    }
+
+    /**
+     * 解析当前生效的数据源列表。
+     * <p>use-config-sources=true 且 form_configs 表非空 → 数据库配置；
+     * 否则回退 {@link ReportConstants#SOURCES} 旧常量。</p>
+     */
+    public List<ReportConstants.SourceDef> resolveSources() {
+        if (useConfigSources) {
+            List<FormConfig> configs = formConfigService.getEnabledForms();
+            if (!configs.isEmpty()) {
+                return configs.stream()
+                        .map(c -> new ReportConstants.SourceDef(
+                                c.getConfigKey(), c.getLabel(), c.getColor(),
+                                c.getFormUuid(), c.getPersonField(), c.getDateField()))
+                        .collect(Collectors.toList());
+            }
+            log.warn("[ReportQueryService] use-config-sources=true 但 form_configs 无启用配置，回退旧常量");
+        }
+        return ReportConstants.SOURCES;
     }
 
 
@@ -156,7 +189,7 @@ public class ReportQueryService {
     public Map<String, Map<String, Integer>> loadSourceCounts(Date start, Date end) throws Exception {
         Map<ReportConstants.SourceDef, Map<String, Integer>> parallelResults =
                 ReportParallel.parallelMap(
-                        ReportConstants.SOURCES,
+                        resolveSources(),
                         src -> {
                             try {
                                 return loadSingleSourceCounts(src, start, end);
@@ -204,7 +237,7 @@ public class ReportQueryService {
             String taskName) throws Exception {
 
         Map<ReportConstants.SourceDef, List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> parallelResults =
-                ReportParallel.parallelMap(ReportConstants.SOURCES, queryFn, taskName);
+                ReportParallel.parallelMap(resolveSources(), queryFn, taskName);
 
         Map<String, List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> result = new LinkedHashMap<>();
         for (Map.Entry<ReportConstants.SourceDef, List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> e : parallelResults.entrySet()) {
@@ -227,7 +260,7 @@ public class ReportQueryService {
             Map<String, List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData>> sourceData) {
 
         List<ProjectReportData.SourceSection> sections = new ArrayList<>();
-        for (ReportConstants.SourceDef src : ReportConstants.SOURCES) {
+        for (ReportConstants.SourceDef src : resolveSources()) {
             List<SearchFormDatasResponseBody.SearchFormDatasResponseBodyData> allRecords
                     = sourceData.getOrDefault(src.key, Collections.emptyList());
 
