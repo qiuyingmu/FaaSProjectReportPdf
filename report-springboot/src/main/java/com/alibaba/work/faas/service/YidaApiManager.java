@@ -486,6 +486,9 @@ public class YidaApiManager {
     /** 指数退避初始等待时间（毫秒） */
     private static final long INITIAL_BACKOFF_MS = 1000L;
 
+    /** 单表单最多拉取页数上限（200 页 = 2 万条），防止数据量异常时 OOM */
+    private static final long MAX_PAGES = 200;
+
     /** 相邻 API 调用的最小间隔（毫秒） */
     private static final long API_THROTTLE_INTERVAL_MS = 150L;
 
@@ -644,6 +647,14 @@ public class YidaApiManager {
         // 计算剩余页数
         int pageSize = 100;
         long totalPages = (totalCount + pageSize - 1) / pageSize;  // 向上取整
+
+        // ---- 资源保护：页数上限，防止数据量异常（或筛选字段配错）时 OOM ----
+        if (totalPages > MAX_PAGES) {
+            throw new RuntimeException(
+                    "表单[" + request.getFormUuid() + "]数据量异常: " + totalCount
+                            + " 条 / " + totalPages + " 页，超过上限 " + MAX_PAGES
+                            + " 页（" + (MAX_PAGES * pageSize) + " 条），请检查筛选字段配置");
+        }
 
         // 从第 2 页开始并行取
         int remainingPages = (int) totalPages - 1;
