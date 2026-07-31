@@ -1,7 +1,10 @@
 package com.alibaba.work.faas.config;
 
+import com.alibaba.work.faas.entity.AppConfig;
 import com.alibaba.work.faas.entity.FormConfig;
+import com.alibaba.work.faas.repository.AppConfigRepository;
 import com.alibaba.work.faas.service.FormConfigService;
+import com.alibaba.work.faas.service.YidaApiManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -14,7 +17,8 @@ import java.util.List;
  * 配置初始化器 —— 首次部署时把旧代码的硬编码表单配置写入数据库。
  *
  * <p>仅当配置缺失时写入默认值；已有数据则跳过（不会覆盖用户手动改过的配置）。
- * 应用凭证（appType/systemToken/userId）不在此处写入，保持从 .env 回退，避免敏感信息入库/入 git。</p>
+ * 应用凭证（appType/systemToken/userId）：表为空时从 .env / yida-secret.properties
+ * 加载一条默认配置入库（管理后台可见可改），已有数据跳过。</p>
  *
  * @author Senior Developer
  * 创建于 2026/07/31
@@ -25,14 +29,21 @@ public class ConfigSeeder implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(ConfigSeeder.class);
 
     private final FormConfigService formConfigService;
+    private final AppConfigRepository appConfigRepository;
+    private final YidaApiManager yidaApiManager;
 
-    public ConfigSeeder(FormConfigService formConfigService) {
+    public ConfigSeeder(FormConfigService formConfigService,
+                        AppConfigRepository appConfigRepository,
+                        YidaApiManager yidaApiManager) {
         this.formConfigService = formConfigService;
+        this.appConfigRepository = appConfigRepository;
+        this.yidaApiManager = yidaApiManager;
     }
 
     @Override
     public void run(String... args) {
         seedFormConfigs();
+        seedAppConfig();
     }
 
     /** 与旧代码 ReportConstants.SOURCES 一致的默认表单配置 */
@@ -61,5 +72,21 @@ public class ConfigSeeder implements CommandLineRunner {
         c.setEnabled(true);
         c.setSortOrder(sortOrder);
         return c;
+    }
+
+    /** 应用配置 seed：表为空时把 .env / yida-secret.properties 的凭证加载入库 */
+    private void seedAppConfig() {
+        if (appConfigRepository.count() > 0) {
+            log.info("[ConfigSeeder] 应用配置已存在，跳过 seed");
+            return;
+        }
+        AppConfig app = new AppConfig();
+        app.setConfigKey("production");
+        app.setAppType(yidaApiManager.getProductionSystemAppType());
+        app.setSystemToken(yidaApiManager.getProductionSystemSystemToken());
+        app.setUserId(yidaApiManager.getDefaultUserId());
+        app.setEnabled(true);
+        appConfigRepository.save(app);
+        log.info("[ConfigSeeder] 应用配置已从 .env 加载到数据库: production (appType={})", app.getAppType());
     }
 }

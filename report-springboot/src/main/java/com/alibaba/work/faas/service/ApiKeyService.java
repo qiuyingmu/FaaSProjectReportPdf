@@ -44,8 +44,9 @@ public class ApiKeyService {
     }
 
     /**
-     * 验证 API Key：用 Key 前 8 位前缀在库中快速定位候选（LIKE），
-     * 只对少数候选做 BCrypt 比对，避免全量遍历造成 CPU 攻击面。
+     * 验证 API Key：前缀快速过滤候选 + BCrypt 精确校验。
+     * <p>不用数据库 LIKE 派生查询——Key 含 `\`、`%`、`_` 等特殊字符时
+     * LIKE 转义会抛 "Parameter value did not match expected type"。</p>
      * 命中后自动累加当日调用次数 +1，更新总次数 +1，更新最后使用时间。
      */
     @Transactional
@@ -54,9 +55,12 @@ public class ApiKeyService {
             return false;
         }
         // keyPrefix 存储格式 = 完整 Key 前 8 位 + "..." + 后 4 位，
-        // 用输入 Key 的前 8 位做前缀匹配即可缩小到 1~2 个候选
+        // 用输入 Key 的前 8 位做内存前缀过滤，只对候选做 BCrypt（避免全量 CPU 开销）
         String prefix8 = apiKey.substring(0, Math.min(8, apiKey.length()));
-        for (ApiKey stored : apiKeyRepository.findByEnabledTrueAndKeyPrefixStartingWith(prefix8)) {
+        for (ApiKey stored : apiKeyRepository.findAllByEnabledTrue()) {
+            if (!stored.getKeyPrefix().startsWith(prefix8)) {
+                continue;
+            }
             if (passwordEncoder.matches(apiKey, stored.getKeyHash())) {
                 recordUsage(stored.getId());
                 return true;
