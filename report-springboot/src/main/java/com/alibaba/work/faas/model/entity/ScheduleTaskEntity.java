@@ -20,16 +20,16 @@ public class ScheduleTaskEntity {
     @Column(name = "task_type", nullable = false, unique = true, length = 20)
     private String taskType;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "cron", nullable = false, length = 100)
     private String cron;
 
-    @Column(nullable = false)
+    @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
     @Column(name = "display_name", length = 50)
     private String displayName;
 
-    @Column(length = 255)
+    @Column(name = "description", length = 255)
     private String description;
 
     @Column(name = "time_range_code", length = 30)

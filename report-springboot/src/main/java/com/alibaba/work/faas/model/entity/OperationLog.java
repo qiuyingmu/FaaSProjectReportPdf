@@ -22,7 +22,7 @@ public class OperationLog {
     private Long id;
 
     /** 操作人 */
-    @Column(length = 50)
+    @Column(name = "operator", length = 50)
     private String operator;
 
     /** 操作来源 IP（经 X-Forwarded-For 解析） */
@@ -30,22 +30,23 @@ public class OperationLog {
     private String ipAddress;
 
     /** 操作类型（LOGIN / REPORT_GEN / SCHEDULE_UPDATE / EXPORT / ERROR） */
-    @Column(length = 50, nullable = false)
+    @Column(name = "action", length = 50, nullable = false)
     private String action;
 
     /** 操作详情 */
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "detail", columnDefinition = "TEXT")
     private String detail;
 
     /** 执行结果（SUCCESS / FAILURE） */
-    @Column(length = 20)
+    @Column(name = "result", length = 20)
     private String result;
 
     /** 耗时（毫秒） */
+    @Column(name = "duration_ms")
     private Long durationMs;
 
     /** 操作时间 */
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public OperationLog() {}
