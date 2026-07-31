@@ -101,8 +101,9 @@ location /report/api/ {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_connect_timeout 10s;
-    proxy_read_timeout 60s;
-    proxy_send_timeout 60s;
+    # ⚠️ 必须 300s：报告生成最长约 5 分钟，60s 会被 Nginx 掐断
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
 }
 
 location /report/actuator/ {
