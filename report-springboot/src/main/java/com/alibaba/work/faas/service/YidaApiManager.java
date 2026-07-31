@@ -205,7 +205,9 @@ public class YidaApiManager {
         try {
             if (useConfigApp && appConfigService != null) {
                 AppConfig ac = appConfigService.getActiveConfig();
-                return getter.apply(ac);
+                if (ac != null) {
+                    return getter.apply(ac);
+                }
             }
         } catch (Exception e) {
             log.warn("[YidaApiManager] 读取数据库应用配置失败，回退 .env/硬编码: {}", e.getMessage());

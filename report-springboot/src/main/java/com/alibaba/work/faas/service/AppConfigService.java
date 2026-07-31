@@ -24,30 +24,23 @@ public class AppConfigService {
     private static final Logger log = LoggerFactory.getLogger(AppConfigService.class);
 
     private final AppConfigRepository repository;
-    private final YidaApiManager yidaApiManager;
 
-    public AppConfigService(AppConfigRepository repository, YidaApiManager yidaApiManager) {
+    public AppConfigService(AppConfigRepository repository) {
         this.repository = repository;
-        this.yidaApiManager = yidaApiManager;
     }
 
     /**
      * 获取当前生效的应用配置。
-     * 优先数据库；数据库为空时回退 YidaApiManager 既有配置（不报错）。
+     * 优先数据库；数据库为空返回 null（调用方回退 .env/硬编码）。
+     * <p>注意：这里不做 .env 回退构造，避免与 YidaApiManager 的
+     * getProductionSystemAppType() 形成无限递归（getter→getActiveConfig→getter）。</p>
      */
     public AppConfig getActiveConfig() {
         List<AppConfig> configs = repository.findAllByEnabledTrue();
         if (!configs.isEmpty()) {
             return configs.get(0);
         }
-        // 回退：用 YidaApiManager 既有配置构造（数据库无配置时保持旧行为）
-        AppConfig fallback = new AppConfig();
-        fallback.setConfigKey("fallback");
-        fallback.setAppType(yidaApiManager.getProductionSystemAppType());
-        fallback.setSystemToken(yidaApiManager.getProductionSystemSystemToken());
-        fallback.setUserId(yidaApiManager.getDefaultUserId());
-        fallback.setEnabled(true);
-        return fallback;
+        return null;
     }
 
     /** 列出全部配置 */
