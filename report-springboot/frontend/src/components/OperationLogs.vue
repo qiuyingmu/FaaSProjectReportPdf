@@ -247,6 +247,7 @@ export default {
       if (action === 'SCHEDULE_TOGGLE') return 'info'
       if (action === 'REPORT_GEN' || action === 'REPORT_MANUAL') return 'success'
       if (action && action.startsWith('USER_')) return 'primary'
+      if (action && action.startsWith('API_KEY_')) return 'danger'
       return ''
     },
     actionLabel(action) {
@@ -263,6 +264,9 @@ export default {
         USER_UPDATE: '更新用户',
         USER_PASSWORD: '重置密码',
         USER_DELETE: '删除用户',
+        API_KEY_CREATE: '创建 API Key',
+        API_KEY_TOGGLE: '启停 API Key',
+        API_KEY_DELETE: '删除 API Key',
         ERROR: '系统错误'
       }
       return map[action] || action

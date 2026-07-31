@@ -354,6 +354,8 @@ public class YidaApiManager {
 
         com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(
                 new Config().setProtocol("https").setRegionId("central")
+                        .setConnectTimeout(5_000)
+                        .setReadTimeout(15_000)
         );
         GetAccessTokenRequest request = new GetAccessTokenRequest()
                 .setAppKey(customAppKey)
@@ -404,10 +406,13 @@ public class YidaApiManager {
     /**
      * 创建 Yida V2 Client。
      * 每次调用创建新实例，避免状态共享问题。
+     * <p>显式设置连接/读取超时：宜搭 API 挂起时不至于长期占用报表线程。</p>
      */
     private Client createClient() throws Exception {
         return new Client(
                 new Config().setProtocol("https").setRegionId("central")
+                        .setConnectTimeout(5_000)
+                        .setReadTimeout(30_000)
         );
     }
 
