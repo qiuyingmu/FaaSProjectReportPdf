@@ -34,4 +34,10 @@ public interface ApiKeyUsageLogRepository extends JpaRepository<ApiKeyUsageLog, 
             DO UPDATE SET count = api_key_usage_log.count + 1
             """, nativeQuery = true)
     void incrementDaily(@Param("keyId") Long keyId, @Param("date") LocalDate date);
+
+    /** 批量删除某 Key 的全部统计记录（删除 Key 时级联清理） */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ApiKeyUsageLog u WHERE u.apiKeyId = :keyId")
+    void deleteByApiKeyId(@Param("keyId") Long keyId);
 }

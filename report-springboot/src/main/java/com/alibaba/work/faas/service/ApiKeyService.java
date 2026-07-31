@@ -44,7 +44,8 @@ public class ApiKeyService {
     }
 
     /**
-     * 验证 API Key：扫描数据库所有启用状态的 Key。
+     * 验证 API Key：用 Key 前 8 位前缀在库中快速定位候选（LIKE），
+     * 只对少数候选做 BCrypt 比对，避免全量遍历造成 CPU 攻击面。
      * 命中后自动累加当日调用次数 +1，更新总次数 +1，更新最后使用时间。
      */
     @Transactional
@@ -52,8 +53,10 @@ public class ApiKeyService {
         if (apiKey == null || apiKey.isBlank()) {
             return false;
         }
-
-        for (ApiKey stored : apiKeyRepository.findAllByEnabledTrue()) {
+        // keyPrefix 存储格式 = 完整 Key 前 8 位 + "..." + 后 4 位，
+        // 用输入 Key 的前 8 位做前缀匹配即可缩小到 1~2 个候选
+        String prefix8 = apiKey.substring(0, Math.min(8, apiKey.length()));
+        for (ApiKey stored : apiKeyRepository.findByEnabledTrueAndKeyPrefixStartingWith(prefix8)) {
             if (passwordEncoder.matches(apiKey, stored.getKeyHash())) {
                 recordUsage(stored.getId());
                 return true;
@@ -119,9 +122,8 @@ public class ApiKeyService {
     @Transactional
     public void delete(Long id) {
         apiKeyRepository.deleteById(id);
-        // 同步删除统计记录
-        usageLogRepository.findRange(id, LocalDate.of(1970, 1, 1), LocalDate.of(2999, 12, 31))
-                .forEach(log -> usageLogRepository.deleteById(log.getId()));
+        // 批量清理统计记录（单条 SQL，替代逐条删除）
+        usageLogRepository.deleteByApiKeyId(id);
         log.info("[ApiKeyService] 删除 API Key: id={}", id);
     }
 

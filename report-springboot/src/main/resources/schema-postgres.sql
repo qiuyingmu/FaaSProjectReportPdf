@@ -2,6 +2,40 @@
 -- 改为 validate 后，此处作为补充初始化脚本确保表存在。
 -- 此脚本在 Hibernate 之前执行，因此先建表再校验。
 
+-- ===== 旧表（首次由 Hibernate update 创建，这里补齐保证全新环境 validate 可启动）=====
+
+CREATE TABLE IF NOT EXISTS users (
+    id          BIGSERIAL       PRIMARY KEY,
+    username    VARCHAR(50)     NOT NULL UNIQUE,
+    password    VARCHAR(255)    NOT NULL,
+    role        VARCHAR(20)     NOT NULL DEFAULT 'ADMIN',
+    enabled     BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP       NOT NULL,
+    last_login  TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS operation_logs (
+    id          BIGSERIAL       PRIMARY KEY,
+    operator    VARCHAR(50),
+    ip_address  VARCHAR(64),
+    action      VARCHAR(50)     NOT NULL,
+    detail      TEXT,
+    result      VARCHAR(20),
+    duration_ms BIGINT,
+    created_at  TIMESTAMP       NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS schedule_tasks (
+    id              BIGSERIAL       PRIMARY KEY,
+    task_type       VARCHAR(20)     NOT NULL UNIQUE,
+    cron            VARCHAR(100)    NOT NULL,
+    enabled         BOOLEAN         NOT NULL DEFAULT TRUE,
+    display_name    VARCHAR(50),
+    description     VARCHAR(255),
+    time_range_code VARCHAR(30),
+    updated_at      TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS api_keys (
     id          BIGSERIAL       PRIMARY KEY,
     name        VARCHAR(100)    NOT NULL,

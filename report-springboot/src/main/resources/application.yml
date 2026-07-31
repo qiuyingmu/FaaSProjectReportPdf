@@ -15,6 +15,12 @@ spring:
   main:
     banner-mode: console
   mandatory-file-encoding: UTF-8
+  task:
+    scheduling:
+      # @Scheduled 线程池：报表定时任务 + 日志清理任务并行，避免互相排队阻塞
+      pool:
+        size: 4
+      thread-name-prefix: sched-
 
   # ========================================
   #  默认：H2 嵌入式数据库（文件模式）
@@ -62,7 +68,8 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,env
+        # 只暴露 health/info，不暴露 env（防止 DB 密码 / OBS Key / 钉钉凭证泄露）
+        include: health,info
 
 # ========================================
 #  生产环境（PostgreSQL）
