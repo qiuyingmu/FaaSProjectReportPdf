@@ -29,23 +29,31 @@ public class DataInitializer implements CommandLineRunner {
 
     private final String adminUsername;
     private final String adminPassword;
+    private final String activeProfiles;
 
     public DataInitializer(UserRepository userRepository,
                            ScheduleTaskRepository scheduleTaskRepository,
                            DynamicScheduler dynamicScheduler,
                            @Value("${report.admin.username:admin}") String adminUsername,
-                           @Value("${report.admin.password:admin123}") String adminPassword) {
+                           @Value("${report.admin.password:admin123}") String adminPassword,
+                           @Value("${spring.profiles.active:}") String activeProfiles) {
         this.userRepository = userRepository;
         this.scheduleTaskRepository = scheduleTaskRepository;
         this.dynamicScheduler = dynamicScheduler;
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
+        this.activeProfiles = activeProfiles;
     }
 
     @Override
     public void run(String... args) {
-        // ---- 安全：检查是否使用默认密码 ----
+        // ---- 安全：生产环境强制禁止默认密码（fail-fast，防止误部署）----
         if ("admin123".equals(adminPassword)) {
+            if (activeProfiles.contains("production")) {
+                throw new IllegalStateException(
+                        "生产环境禁止使用默认管理员密码 'admin123'！"
+                                + "请在 .env 中设置 REPORT_ADMIN_PASSWORD=强密码 后重新启动。");
+            }
             log.warn("⚠️⚠️⚠️ 管理员密码为默认值 'admin123'！生产环境必须通过环境变量 REPORT_ADMIN_PASSWORD 或 report.admin.password 设置强密码！⚠️⚠️⚠️");
         }
 
