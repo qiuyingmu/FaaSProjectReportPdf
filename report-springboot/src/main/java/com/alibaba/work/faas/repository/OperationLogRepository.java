@@ -32,10 +32,11 @@ public interface OperationLogRepository extends JpaRepository<OperationLog, Long
     List<Map<String, Object>> countByAction(@Param("start") LocalDateTime start,
                                             @Param("end") LocalDateTime end);
 
-    /** 按天聚合操作数（指定时间范围，用于趋势图） */
-    @Query("SELECT FUNCTION('DATE', o.createdAt) AS day, COUNT(o) AS cnt " +
-           "FROM OperationLog o WHERE o.createdAt BETWEEN :start AND :end " +
-           "GROUP BY FUNCTION('DATE', o.createdAt) ORDER BY day ASC")
+    /** 按天聚合操作数（指定时间范围，用于趋势图）
+     *  用原生 SQL：Hibernate 5.6 HQL 不支持 FUNCTION('DATE', ...) */
+    @Query(value = "SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt " +
+            "FROM operation_logs WHERE created_at BETWEEN :start AND :end " +
+            "GROUP BY CAST(created_at AS DATE) ORDER BY day ASC", nativeQuery = true)
     List<Map<String, Object>> countByDay(@Param("start") LocalDateTime start,
                                          @Param("end") LocalDateTime end);
 }
