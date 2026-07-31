@@ -238,7 +238,7 @@ public class YidaApiManager {
     private String customAppSecret;
 
     /** 本地缓存的自定义 token（JVM 内存级，FaaS 容器复用期间持续有效） */
-    private String cachedToken = "";
+    private volatile String cachedToken = "";
 
     /** 本地缓存 token 的过期时间戳（毫秒），AtomicLong 保证原子读写 */
     private final AtomicLong cachedTokenExpireAt = new AtomicLong(0L);
@@ -342,8 +342,14 @@ public class YidaApiManager {
 
     /**
      * 请求钉钉接口获取新 token，写入本地缓存并返回。
+     * <p>synchronized + 双检锁：并发查询（如 6 数据源并行）时只发起一次钉钉刷新，
+     * 避免缓存过期瞬间 N 个线程同时刷新 token。</p>
      */
-    private String refreshAndCacheToken() throws Exception {
+    private synchronized String refreshAndCacheToken() throws Exception {
+        // 双检：进入锁后若已被其他线程刷新，直接复用
+        if (StringUtils.isNotBlank(cachedToken) && !isCachedTokenExpired()) {
+            return cachedToken;
+        }
         log.info("[YidaApiManager] 本地缓存未命中/已过期，请求钉钉获取新 token...");
 
         com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(

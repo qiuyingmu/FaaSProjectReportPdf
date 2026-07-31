@@ -33,6 +33,10 @@ public class ReportService {
     private final YidaFormUpdater formUpdater;
     private final ReportPdfExporter pdfExporter;
 
+    /** 生成中互斥锁：防止手动生成与定时任务并发执行 */
+    private final java.util.concurrent.atomic.AtomicBoolean generating =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     public ReportService(ReportStrategyFactory factory,
                           PlatformReportStrategy platformStrategy,
                           ProjectReportStrategy projectStrategy,
@@ -58,84 +62,93 @@ public class ReportService {
     // ========================================
 
     public Map<String, Object> generateCombinedPeriodReport(TimeRange tr,
-                                                              String periodLabel,
-                                                              String rangeLabel,
-                                                              String dateDisplay) throws Exception {
-        String shortCode = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
-
-        // 构建运营报告名称（宜搭 textField_mnznz7bg）
-        String reportBaseName = buildReportName(periodLabel, tr, rangeLabel, dateDisplay);
-
-        log.info("▶ 生成合并报告: {}", reportBaseName);
-
-        // 1. 生成平台报告 PDF（传入 periodLabel 确保平台封面使用正确的周期标签）
-        ReportRequest platRequest = new ReportRequest(
-                ReportType.PLATFORM, Collections.singletonList(tr), null, null, periodLabel);
-        List<ReportResult> platResults = generate(platRequest);
-        byte[] platformPdf = (platResults != null && !platResults.isEmpty())
-                ? platResults.get(0).getPdfBytes() : null;
-
-        // 2. 生成全项目报告（两趟渲染获取页码）
-        ReportRequest projRequest = new ReportRequest(
-                ReportType.PROJECT, Collections.singletonList(tr), null, null);
-
-        byte[] projectPdf = null;
-        Map<String, Object> projDataMap = projectStrategy.buildProjectReportData(projRequest);
-        if (projDataMap != null && Boolean.TRUE.equals(projDataMap.get("isMultiProject"))) {
-            @SuppressWarnings("unchecked")
-            List<ProjectReportData> dataList = (List<ProjectReportData>) projDataMap.get("dataList");
-            if (dataList != null && !dataList.isEmpty()) {
-                // subtitle = "月报-2026年6月（...）"，Builders 自行加【全项目汇总报告-...】包裹
-                String projectSub = reportBaseName.substring("运营报告-".length());
-                ProjectReportData data = dataList.get(0).withSubtitle(projectSub);
-                projectPdf = renderProjectPdfWithPageNumbers(data);
+                                                            String periodLabel,
+                                                            String rangeLabel,
+                                                            String dateDisplay) throws Exception {
+        // ---- 互斥：同一时刻只允许一个报告生成任务（手动 / 定时互斥）----
+        if (!generating.compareAndSet(false, true)) {
+            log.warn("⚠ 已有报告正在生成，本次请求直接跳过");
+            return java.util.Map.of("success", false, "message", "已有报告正在生成中，请稍候再试");
+        }
+        try {
+            String shortCode = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+    
+            // 构建运营报告名称（宜搭 textField_mnznz7bg）
+            String reportBaseName = buildReportName(periodLabel, tr, rangeLabel, dateDisplay);
+    
+            log.info("▶ 生成合并报告: {}", reportBaseName);
+    
+            // 1. 生成平台报告 PDF（传入 periodLabel 确保平台封面使用正确的周期标签）
+            ReportRequest platRequest = new ReportRequest(
+                    ReportType.PLATFORM, Collections.singletonList(tr), null, null, periodLabel);
+            List<ReportResult> platResults = generate(platRequest);
+            byte[] platformPdf = (platResults != null && !platResults.isEmpty())
+                    ? platResults.get(0).getPdfBytes() : null;
+    
+            // 2. 生成全项目报告（两趟渲染获取页码）
+            ReportRequest projRequest = new ReportRequest(
+                    ReportType.PROJECT, Collections.singletonList(tr), null, null);
+    
+            byte[] projectPdf = null;
+            Map<String, Object> projDataMap = projectStrategy.buildProjectReportData(projRequest);
+            if (projDataMap != null && Boolean.TRUE.equals(projDataMap.get("isMultiProject"))) {
+                @SuppressWarnings("unchecked")
+                List<ProjectReportData> dataList = (List<ProjectReportData>) projDataMap.get("dataList");
+                if (dataList != null && !dataList.isEmpty()) {
+                    // subtitle = "月报-2026年6月（...）"，Builders 自行加【全项目汇总报告-...】包裹
+                    String projectSub = reportBaseName.substring("运营报告-".length());
+                    ProjectReportData data = dataList.get(0).withSubtitle(projectSub);
+                    projectPdf = renderProjectPdfWithPageNumbers(data);
+                }
             }
-        }
-        // 退路：如果策略未返回数据，用标准 generate 流程
-        if (projectPdf == null) {
-            List<ReportResult> fallbackResults = generate(projRequest);
-            if (fallbackResults != null && !fallbackResults.isEmpty()) {
-                projectPdf = fallbackResults.get(0).getPdfBytes();
+            // 退路：如果策略未返回数据，用标准 generate 流程
+            if (projectPdf == null) {
+                List<ReportResult> fallbackResults = generate(projRequest);
+                if (fallbackResults != null && !fallbackResults.isEmpty()) {
+                    projectPdf = fallbackResults.get(0).getPdfBytes();
+                }
             }
+    
+            if (platformPdf == null && projectPdf == null) {
+                log.warn("⚠ 平台报告和项目报告均无数据，跳过");
+                return null;
+            }
+    
+            // 3. 合并 PDF
+            byte[] combinedPdf = PdfMerger.merge(
+                    platformPdf != null ? platformPdf : new byte[0],
+                    projectPdf != null ? projectPdf : new byte[0]);
+    
+            // 4. 创建宜搭记录
+            String formInstId = formUpdater.createReportRecord(
+                    reportBaseName, periodLabel, rangeLabel, dateDisplay);
+    
+            if (formInstId == null || formInstId.isEmpty()) {
+                log.error("创建宜搭记录失败，跳过 {}", reportBaseName);
+                return null;
+            }
+    
+            // 5. 上传到 OBS（reportBaseName 用作 OBS 目录名+文件名）
+            Map<String, String> obsInfo = formUpdater.uploadToObs(
+                    combinedPdf, periodLabel + "报告", reportBaseName);
+    
+            // 6. 更新宜搭记录
+            formUpdater.updateReportRecord(formInstId,
+                    Collections.singletonList(obsInfo), dateDisplay, true, "已完成");
+    
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", true);
+            result.put("reportName", reportBaseName);
+            result.put("formInstId", formInstId);
+            result.put("obsUrl", obsInfo.get("previewUrl"));
+            result.put("pdfSize", combinedPdf.length);
+            result.put("shortCode", shortCode);
+            log.info("✅ 合并报告完成: {} ({} KB, formId={})",
+                    reportBaseName, combinedPdf.length / 1024, formInstId);
+            return result;
+        } finally {
+            generating.set(false);
         }
-
-        if (platformPdf == null && projectPdf == null) {
-            log.warn("⚠ 平台报告和项目报告均无数据，跳过");
-            return null;
-        }
-
-        // 3. 合并 PDF
-        byte[] combinedPdf = PdfMerger.merge(
-                platformPdf != null ? platformPdf : new byte[0],
-                projectPdf != null ? projectPdf : new byte[0]);
-
-        // 4. 创建宜搭记录
-        String formInstId = formUpdater.createReportRecord(
-                reportBaseName, periodLabel, rangeLabel, dateDisplay);
-
-        if (formInstId == null || formInstId.isEmpty()) {
-            log.error("创建宜搭记录失败，跳过 {}", reportBaseName);
-            return null;
-        }
-
-        // 5. 上传到 OBS（reportBaseName 用作 OBS 目录名+文件名）
-        Map<String, String> obsInfo = formUpdater.uploadToObs(
-                combinedPdf, periodLabel + "报告", reportBaseName);
-
-        // 6. 更新宜搭记录
-        formUpdater.updateReportRecord(formInstId,
-                Collections.singletonList(obsInfo), dateDisplay, true, "已完成");
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
-        result.put("reportName", reportBaseName);
-        result.put("formInstId", formInstId);
-        result.put("obsUrl", obsInfo.get("previewUrl"));
-        result.put("pdfSize", combinedPdf.length);
-        result.put("shortCode", shortCode);
-        log.info("✅ 合并报告完成: {} ({} KB, formId={})",
-                reportBaseName, combinedPdf.length / 1024, formInstId);
-        return result;
     }
 
     /**
