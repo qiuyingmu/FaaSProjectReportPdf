@@ -55,7 +55,7 @@ public class AppConfigService {
         return repository.findAll();
     }
 
-    /** 新增或更新 */
+    /** 新增或更新（systemToken 留空表示不修改，防止前端编辑时误覆盖凭证） */
     @Transactional
     public AppConfig save(AppConfig config) {
         if (config.getConfigKey() == null || config.getConfigKey().isBlank()) {
@@ -63,6 +63,21 @@ public class AppConfigService {
         }
         if (config.getAppType() == null || config.getAppType().isBlank()) {
             throw new IllegalArgumentException("appType 不能为空");
+        }
+        if (config.getUserId() == null || config.getUserId().isBlank()) {
+            throw new IllegalArgumentException("userId 不能为空");
+        }
+        // systemToken 为空 → 更新时保留原值（新增时必须提供）
+        if (config.getSystemToken() == null || config.getSystemToken().isBlank()) {
+            if (config.getId() != null) {
+                AppConfig existing = repository.findById(config.getId()).orElse(null);
+                if (existing != null) {
+                    config.setSystemToken(existing.getSystemToken());
+                }
+            }
+        }
+        if (config.getSystemToken() == null || config.getSystemToken().isBlank()) {
+            throw new IllegalArgumentException("systemToken 不能为空（新增时必须提供）");
         }
         return repository.save(config);
     }

@@ -1,5 +1,6 @@
 package com.alibaba.work.faas.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.persistence.*;
 
 /**
@@ -28,7 +29,8 @@ public class AppConfig {
     @Column(name = "app_type", nullable = false, length = 100)
     private String appType;
 
-    /** 宜搭系统 Token */
+    /** 宜搭系统 Token（WRITE_ONLY：不序列化回前端，但允许前端写入） */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "system_token", nullable = false, length = 255)
     private String systemToken;
 

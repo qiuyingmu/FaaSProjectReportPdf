@@ -1,5 +1,6 @@
 package com.alibaba.work.faas.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import javax.persistence.*;
 import java.time.Instant;
 
@@ -28,7 +29,8 @@ public class ApiKey {
     @Column(name = "key_prefix", nullable = false, length = 100)
     private String keyPrefix;
 
-    /** Key 的 BCrypt 哈希值 */
+    /** Key 的 BCrypt 哈希值（绝不序列化到前端，防止离线爆破） */
+    @JsonIgnore
     @Column(name = "key_hash", nullable = false, length = 255)
     private String keyHash;
 

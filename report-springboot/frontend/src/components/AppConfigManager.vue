@@ -14,7 +14,13 @@
     <el-table :data="configs" stripe v-loading="loading">
       <el-table-column prop="configKey" label="标识" width="140" />
       <el-table-column prop="appType" label="应用编码 appType" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="systemToken" label="系统 Token" min-width="200" show-overflow-tooltip />
+      <el-table-column label="系统 Token" min-width="160">
+        <template #default="{ row }">
+          <el-tag type="info" size="small" effect="plain">
+            {{ row.systemToken ? '已配置（不显示）' : '未配置' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="userId" label="操作人 userId" width="160" show-overflow-tooltip />
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
@@ -37,8 +43,10 @@
         <el-form-item label="应用编码" required>
           <el-input v-model="form.appType" placeholder="APP_xxxx" />
         </el-form-item>
-        <el-form-item label="系统 Token" required>
-          <el-input v-model="form.systemToken" placeholder="宜搭系统 Token" show-password />
+        <el-form-item :label="editing ? '系统 Token' : '系统 Token'" :required="!editing">
+          <el-input v-model="form.systemToken"
+                    :placeholder="editing ? '留空表示不修改（凭证不回显）' : '宜搭系统 Token'"
+                    show-password />
         </el-form-item>
         <el-form-item label="操作人 ID" required>
           <el-input v-model="form.userId" placeholder="钉钉 userId" />
@@ -90,8 +98,13 @@ export default {
       this.showDialog = true
     },
     async save() {
-      if (!this.form.configKey || !this.form.appType || !this.form.systemToken || !this.form.userId) {
+      // 新增时 systemToken 必填；编辑时留空 = 不修改（后端保留原值）
+      if (!this.form.configKey || !this.form.appType || !this.form.userId) {
         ElMessage.warning('请填写必填项')
+        return
+      }
+      if (!this.editing && !this.form.systemToken) {
+        ElMessage.warning('新增配置必须填写系统 Token')
         return
       }
       this.saving = true
