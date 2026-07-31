@@ -30,6 +30,8 @@ spring:
       enabled: false
       path: /h2-console
   jpa:
+    # 关闭 OSIV：本项目为 REST + PDF 生成，无视图渲染，避免渲染阶段持有数据库连接
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
