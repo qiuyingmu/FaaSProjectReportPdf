@@ -47,14 +47,19 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // ---- 安全：生产环境强制禁止默认密码（fail-fast，防止误部署）----
-        if ("admin123".equals(adminPassword)) {
+        // ---- 安全：生产环境强制禁止默认/空密码（fail-fast，防止误部署）----
+        // docker-compose 未设置 REPORT_ADMIN_PASSWORD 时注入的是空字符串，
+        // 与默认值 admin123 同等危险，必须一并拦截。
+        boolean insecurePassword = adminPassword == null
+                || adminPassword.isBlank()
+                || "admin123".equals(adminPassword);
+        if (insecurePassword) {
             if (activeProfiles.contains("production")) {
                 throw new IllegalStateException(
-                        "生产环境禁止使用默认管理员密码 'admin123'！"
+                        "生产环境禁止使用默认/空管理员密码！"
                                 + "请在 .env 中设置 REPORT_ADMIN_PASSWORD=强密码 后重新启动。");
             }
-            log.warn("⚠️⚠️⚠️ 管理员密码为默认值 'admin123'！生产环境必须通过环境变量 REPORT_ADMIN_PASSWORD 或 report.admin.password 设置强密码！⚠️⚠️⚠️");
+            log.warn("⚠️⚠️⚠️ 管理员密码为默认值/空！生产环境必须通过环境变量 REPORT_ADMIN_PASSWORD 或 report.admin.password 设置强密码！⚠️⚠️⚠️");
         }
 
         // ---- 初始化管理员账号 ----

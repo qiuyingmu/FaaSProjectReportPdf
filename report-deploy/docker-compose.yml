@@ -20,6 +20,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # 限制容器 stdout 日志，防止无限增长占满磁盘
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     networks:
       - report-net
 
@@ -51,6 +57,12 @@ services:
       TZ: Asia/Shanghai
     env_file:
       - .env
+    # 限制容器 stdout 日志，防止无限增长占满磁盘
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     ports:
       - "127.0.0.1:8082:8080"
     volumes:

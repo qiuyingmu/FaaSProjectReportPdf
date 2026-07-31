@@ -11,9 +11,13 @@
     <!-- 文件输出（UTF-8 编码，日志文件通用、跨平台正常阅读） -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/report.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/report.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/report.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- 保留 30 天 -->
             <maxHistory>30</maxHistory>
+            <!-- 单文件上限 100MB，防止单日日志过大 -->
+            <maxFileSize>100MB</maxFileSize>
+            <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <charset>UTF-8</charset>
