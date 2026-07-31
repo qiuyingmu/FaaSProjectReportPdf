@@ -49,6 +49,9 @@ public class ScheduleController {
         if (task.getCron() == null || task.getCron().isEmpty()) {
             return errorResult("Cron 表达式不能为空");
         }
+        if (!org.springframework.scheduling.support.CronExpression.isValidExpression(task.getCron())) {
+            return errorResult("Cron 表达式格式非法: " + task.getCron() + "（示例: 0 0 10 1 * ?）");
+        }
         if (scheduleTaskService.findByType(task.getType()) != null) {
             return errorResult("任务类型 '" + task.getType() + "' 已存在");
         }
@@ -78,6 +81,9 @@ public class ScheduleController {
         // 校验必填字段
         if (task.getCron() == null || task.getCron().isEmpty()) {
             return errorResult("Cron 表达式不能为空");
+        }
+        if (!org.springframework.scheduling.support.CronExpression.isValidExpression(task.getCron())) {
+            return errorResult("Cron 表达式格式非法: " + task.getCron() + "（示例: 0 0 10 1 * ?）");
         }
         task.setType(type);
         ScheduleTask updated = dynamicScheduler.updateTask(task);

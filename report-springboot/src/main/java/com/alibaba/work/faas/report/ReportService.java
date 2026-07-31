@@ -124,8 +124,8 @@ public class ReportService {
                     reportBaseName, periodLabel, rangeLabel, dateDisplay);
     
             if (formInstId == null || formInstId.isEmpty()) {
-                log.error("创建宜搭记录失败，跳过 {}", reportBaseName);
-                return null;
+                // 抛异常而非返回 null：让定时任务的重试机制（5min→15min→30min）有机会恢复
+                throw new RuntimeException("创建宜搭记录失败: " + reportBaseName);
             }
     
             // 5. 上传到 OBS（reportBaseName 用作 OBS 目录名+文件名）
