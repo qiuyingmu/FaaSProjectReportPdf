@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_access_logs", indexes = {
-    @Index(name = "idx_aal_created", columnList = "createdAt DESC"),
-    @Index(name = "idx_aal_key_created", columnList = "keyPrefix, createdAt DESC")
+    @Index(name = "idx_aal_created", columnList = "created_at DESC"),
+    @Index(name = "idx_aal_key_created", columnList = "key_prefix, created_at DESC")
 })
 public class ApiAccessLog {
 
