@@ -20,3 +20,26 @@ CREATE TABLE IF NOT EXISTS api_key_usage_log (
     count       BIGINT          NOT NULL DEFAULT 0,
     UNIQUE (api_key_id, usage_date)
 );
+
+-- ===== 可配置化版本：表单数据源配置 =====
+CREATE TABLE IF NOT EXISTS form_configs (
+    id          BIGSERIAL       PRIMARY KEY,
+    config_key  VARCHAR(50)     NOT NULL UNIQUE,
+    label       VARCHAR(50)     NOT NULL,
+    color       VARCHAR(20),
+    form_uuid   VARCHAR(100)    NOT NULL,
+    person_field VARCHAR(100)   NOT NULL,
+    date_field  VARCHAR(100)    NOT NULL,
+    enabled     BOOLEAN         NOT NULL DEFAULT TRUE,
+    sort_order  INTEGER         NOT NULL DEFAULT 0
+);
+
+-- ===== 可配置化版本：宜搭应用配置 =====
+CREATE TABLE IF NOT EXISTS app_configs (
+    id          BIGSERIAL       PRIMARY KEY,
+    config_key  VARCHAR(50)     NOT NULL UNIQUE,
+    app_type    VARCHAR(100)    NOT NULL,
+    system_token VARCHAR(255)   NOT NULL,
+    user_id     VARCHAR(100)    NOT NULL,
+    enabled     BOOLEAN         NOT NULL DEFAULT TRUE
+);

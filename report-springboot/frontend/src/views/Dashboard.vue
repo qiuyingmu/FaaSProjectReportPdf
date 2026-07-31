@@ -44,6 +44,12 @@
           <el-menu-item index="apikeys">
             <el-icon><Key /></el-icon><span>API Key</span>
           </el-menu-item>
+          <el-menu-item index="formconfigs">
+            <el-icon><Grid /></el-icon><span>表单配置</span>
+          </el-menu-item>
+          <el-menu-item index="appconfigs">
+            <el-icon><Setting /></el-icon><span>应用配置</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -55,6 +61,8 @@
         <ScheduleManager v-show="activeTab === 'schedule'" />
         <UserManager v-show="activeTab === 'users'" :currentUser="username" />
         <ApiKeyManager v-show="activeTab === 'apikeys'" />
+        <FormConfigManager v-show="activeTab === 'formconfigs'" />
+        <AppConfigManager v-show="activeTab === 'appconfigs'" />
       </el-main>
     </el-container>
   </el-container>
@@ -72,7 +80,7 @@
 </template>
 
 <script>
-import { DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key } from '@element-plus/icons-vue'
+import { DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key, Grid, Setting } from '@element-plus/icons-vue'
 import SystemOverview from '../components/SystemOverview.vue'
 import LogViewer from '../components/LogViewer.vue'
 import OperationLogs from '../components/OperationLogs.vue'
@@ -80,10 +88,12 @@ import ReportGenerator from '../components/ReportGenerator.vue'
 import ScheduleManager from '../components/ScheduleManager.vue'
 import UserManager from '../components/UserManager.vue'
 import ApiKeyManager from '../components/ApiKeyManager.vue'
+import FormConfigManager from '../components/FormConfigManager.vue'
+import AppConfigManager from '../components/AppConfigManager.vue'
 import { apiGet, apiFetch } from '../utils/api.js'
 
 export default {
-  components: { SystemOverview, LogViewer, OperationLogs, ReportGenerator, ScheduleManager, UserManager, ApiKeyManager, DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key },
+  components: { SystemOverview, LogViewer, OperationLogs, ReportGenerator, ScheduleManager, UserManager, ApiKeyManager, FormConfigManager, AppConfigManager, DataAnalysis, Monitor, Document, List, Pointer, Clock, UserFilled, ArrowDown, SwitchButton, User, Key, Grid, Setting },
   data() {
     return { username: 'admin', activeTab: 'overview' }
   },
