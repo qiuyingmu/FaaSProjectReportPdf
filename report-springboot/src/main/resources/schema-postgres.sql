@@ -43,3 +43,22 @@ CREATE TABLE IF NOT EXISTS app_configs (
     user_id     VARCHAR(100)    NOT NULL,
     enabled     BOOLEAN         NOT NULL DEFAULT TRUE
 );
+
+-- ===== API 调用明细日志 =====
+CREATE TABLE IF NOT EXISTS api_access_logs (
+    id          BIGSERIAL       PRIMARY KEY,
+    key_prefix  VARCHAR(50),
+    source      VARCHAR(20),
+    ip          VARCHAR(64),
+    method      VARCHAR(10),
+    path        VARCHAR(255),
+    status      INTEGER,
+    duration_ms BIGINT,
+    created_at  TIMESTAMP       NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aal_created ON api_access_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_aal_key_created ON api_access_logs (key_prefix, created_at DESC);
+
+-- ===== 操作日志：补充来源 IP 列（旧表升级）=====
+ALTER TABLE operation_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(64);
+CREATE INDEX IF NOT EXISTS idx_ol_ip_created ON operation_logs (ip_address, created_at DESC);
