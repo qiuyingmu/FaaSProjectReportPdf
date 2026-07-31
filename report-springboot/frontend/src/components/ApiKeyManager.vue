@@ -78,7 +78,18 @@
     </el-dialog>
 
     <!-- 统计弹窗 -->
-    <el-dialog v-model="showStatsDialog" :title="statsTitle" width="700px">
+    <el-dialog v-model="showStatsDialog" :title="statsTitle" width="820px">
+      <!-- 区间选择 -->
+      <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:13px; color:#606266;">统计区间：</span>
+        <el-radio-group v-model="statsDays" size="small" @change="reloadStats">
+          <el-radio-button :value="7">近 7 天</el-radio-button>
+          <el-radio-button :value="30">近 30 天</el-radio-button>
+          <el-radio-button :value="90">近 90 天</el-radio-button>
+          <el-radio-button :value="0">全部</el-radio-button>
+        </el-radio-group>
+      </div>
+
       <div class="stats-summary">
         <div class="stat-item">
           <div class="stat-label">总调用次数</div>
@@ -90,6 +101,31 @@
         </div>
       </div>
       <v-chart class="chart" :option="chartOption" autoresize />
+
+      <!-- 调用明细 -->
+      <div style="margin-top:16px; font-size:14px; font-weight:500; color:#303133;">调用明细</div>
+      <el-table :data="accessLogs" size="small" border stripe style="width:100%; margin-top:8px;" v-loading="accessLoading" :max-height="260">
+        <el-table-column label="时间" width="150">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="IP" width="120">
+          <template #default="{ row }"><span style="font-family:monospace; font-size:12px;">{{ row.ip || '-' }}</span></template>
+        </el-table-column>
+        <el-table-column label="方法" width="70">
+          <template #default="{ row }">{{ row.method }}</template>
+        </el-table-column>
+        <el-table-column label="路径" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }"><span style="font-family:monospace; font-size:12px;">{{ row.path }}</span></template>
+        </el-table-column>
+        <el-table-column label="状态" width="70">
+          <template #default="{ row }">
+            <el-tag :type="row.status < 400 ? 'success' : row.status < 500 ? 'warning' : 'danger'" size="small">{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="耗时" width="80">
+          <template #default="{ row }">{{ row.durationMs ? row.durationMs + 'ms' : '-' }}</template>
+        </el-table-column>
+      </el-table>
     </el-dialog>
   </div>
 </template>
@@ -129,6 +165,10 @@ export default {
       statsTitle: '',
       statsRange: '',
       statsTotal: 0,
+      statsDays: 30,
+      statsKeyPrefix: '',
+      accessLogs: [],
+      accessLoading: false,
       chartOption: { tooltip: { trigger: 'axis' }, xAxis: { type: 'category' }, yAxis: { type: 'value' }, series: [] }
     }
   },
@@ -193,20 +233,34 @@ export default {
       }
     },
     async showStats(row) {
-      // 默认 30 天
+      this.statsKeyPrefix = row.keyPrefix
+      this.statsDays = 30
+      this.statsTitle = `${row.name} - 调用统计`
+      this.showStatsDialog = true
+      await this.reloadStats()
+      await this.loadAccessLogs()
+    },
+    async reloadStats() {
+      if (!this.statsKeyPrefix) return
       const to = new Date()
       const from = new Date()
-      from.setDate(to.getDate() - 29)
+      if (this.statsDays > 0) {
+        from.setDate(to.getDate() - (this.statsDays - 1))
+      } else {
+        from.setFullYear(2000, 0, 1)
+      }
       const fmt = d => d.toISOString().slice(0, 10)
       const fromStr = fmt(from)
       const toStr = fmt(to)
-
       try {
-        const data = await apiGet(`/api/admin/api-keys/${row.id}/stats?from=${fromStr}&to=${toStr}`)
+        // 用 Key 前缀查询统计：找到对应 apiKey id
+        const keys = await apiGet('/api/admin/api-keys')
+        const match = keys.find(k => k.keyPrefix === this.statsKeyPrefix)
+        if (!match) return
+        const data = await apiGet(`/api/admin/api-keys/${match.id}/stats?from=${fromStr}&to=${toStr}`)
         const daily = data.daily || []
 
-        this.statsTitle = `${row.name} - 调用统计`
-        this.statsRange = `${fromStr} 至 ${toStr}`
+        this.statsRange = this.statsDays > 0 ? `${fromStr} 至 ${toStr}` : '全部'
         this.statsTotal = daily.reduce((s, d) => s + d.count, 0)
 
         this.chartOption = {
@@ -246,10 +300,20 @@ export default {
             itemStyle: { color: '#3b82f6' }
           }]
         }
-        this.showStatsDialog = true
       } catch (e) {
         ElMessage.error('加载统计失败')
       }
+    },
+    async loadAccessLogs() {
+      if (!this.statsKeyPrefix) return
+      this.accessLoading = true
+      try {
+        const d = await apiGet(`/api/admin/api-access-logs?page=0&size=20&keyPrefix=${encodeURIComponent(this.statsKeyPrefix)}`)
+        if (d.success) this.accessLogs = d.logs
+      } catch (e) {
+        ElMessage.error('加载调用明细失败')
+      }
+      this.accessLoading = false
     },
     formatTime(s) {
       if (!s) return ''

@@ -41,7 +41,8 @@ public class ScheduleController {
 
     /** 新增定时任务 */
     @PostMapping(consumes = "application/json")
-    public Map<String, Object> createSchedule(@RequestBody ScheduleTask task) {
+    public Map<String, Object> createSchedule(@RequestBody ScheduleTask task,
+                                              javax.servlet.http.HttpServletRequest request) {
         if (task.getType() == null || task.getType().isEmpty()) {
             return errorResult("任务类型不能为空");
         }
@@ -54,7 +55,8 @@ public class ScheduleController {
 
         ScheduleTask saved = scheduleTaskService.save(task);
         dynamicScheduler.addTask(saved);
-        operationLogService.log("admin", "SCHEDULE_CREATE",
+        operationLogService.log("admin", com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "SCHEDULE_CREATE",
                 "新增任务 " + task.getType() + " cron=" + task.getCron(), "SUCCESS", null);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -67,7 +69,8 @@ public class ScheduleController {
     @PutMapping(value = "/{type}", consumes = "application/json")
     public Map<String, Object> updateSchedule(
             @PathVariable String type,
-            @RequestBody ScheduleTask task) {
+            @RequestBody ScheduleTask task,
+            javax.servlet.http.HttpServletRequest request) {
         // 检查任务是否存在
         if (scheduleTaskService.findByType(type) == null) {
             return errorResult("任务 '" + type + "' 不存在，请先创建");
@@ -78,7 +81,8 @@ public class ScheduleController {
         }
         task.setType(type);
         ScheduleTask updated = dynamicScheduler.updateTask(task);
-        operationLogService.log("admin", "SCHEDULE_UPDATE",
+        operationLogService.log("admin", com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "SCHEDULE_UPDATE",
                 "更新任务 " + type + " Cron: " + task.getCron(), "SUCCESS", null);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
@@ -88,7 +92,8 @@ public class ScheduleController {
 
     /** 启停任务 */
     @PostMapping("/{type}/toggle")
-    public Map<String, Object> toggleSchedule(@PathVariable String type) {
+    public Map<String, Object> toggleSchedule(@PathVariable String type,
+                                              javax.servlet.http.HttpServletRequest request) {
         ScheduleTask task = dynamicScheduler.getTasks().stream()
                 .filter(t -> t.getType().equals(type))
                 .findFirst()
@@ -98,7 +103,8 @@ public class ScheduleController {
         }
         task.setEnabled(!task.isEnabled());
         dynamicScheduler.updateTask(task);
-        operationLogService.log("admin", "SCHEDULE_TOGGLE",
+        operationLogService.log("admin", com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "SCHEDULE_TOGGLE",
                 type + (task.isEnabled() ? " 启用" : " 停用"), "SUCCESS", null);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
@@ -108,10 +114,12 @@ public class ScheduleController {
 
     /** 删除任务 */
     @DeleteMapping("/{type}")
-    public Map<String, Object> deleteSchedule(@PathVariable String type) {
+    public Map<String, Object> deleteSchedule(@PathVariable String type,
+                                              javax.servlet.http.HttpServletRequest request) {
         dynamicScheduler.deleteTask(type);
         scheduleTaskService.deleteByType(type);
-        operationLogService.log("admin", "SCHEDULE_DELETE",
+        operationLogService.log("admin", com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "SCHEDULE_DELETE",
                 "删除任务 " + type, "SUCCESS", null);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);

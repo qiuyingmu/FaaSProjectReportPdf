@@ -43,7 +43,8 @@ public class ReportGenerateController {
      * 手动生成合并的周期报告（平台 + 全项目）。
      */
     @PostMapping(value = "/generate", consumes = "application/json")
-    public Map<String, Object> generate(@RequestBody Map<String, String> body) {
+    public Map<String, Object> generate(@RequestBody Map<String, String> body,
+                                        javax.servlet.http.HttpServletRequest request) {
         String period = body.get("period");
         Map<String, Object> result = new LinkedHashMap<>();
 
@@ -77,7 +78,8 @@ public class ReportGenerateController {
                 result.put("success", false);
                 result.put("message", "平台报告和项目报告均无数据");
             } else {
-                operationLogService.log("admin", "REPORT_MANUAL",
+                operationLogService.log("admin", com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                        "REPORT_MANUAL",
                         "手动生成-" + periodLabel + " 耗时" + totalCost + "ms", "SUCCESS", totalCost);
 
                 result.put("success", true);

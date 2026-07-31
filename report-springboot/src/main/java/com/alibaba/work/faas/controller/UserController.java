@@ -63,7 +63,8 @@ public class UserController {
     // ========================================
 
     @PostMapping(consumes = "application/json")
-    public ApiResponse<UserDTO> create(@RequestBody UserDTO dto, Authentication auth) {
+    public ApiResponse<UserDTO> create(@RequestBody UserDTO dto, Authentication auth,
+                                       javax.servlet.http.HttpServletRequest request) {
         // 参数校验
         String username = dto.getUsername();
         String password = dto.getPassword();
@@ -81,7 +82,8 @@ public class UserController {
         user.setRole(dto.getRole() != null ? dto.getRole() : "ADMIN");
         userRepository.save(user);
 
-        operationLogService.log(auth.getName(), "USER_CREATE",
+        operationLogService.log(auth.getName(), com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "USER_CREATE",
                 "创建管理员: " + username, "SUCCESS", null);
         log.info("✅ 管理员 {} 创建了用户: {}", auth.getName(), username);
 
@@ -95,7 +97,8 @@ public class UserController {
     @PutMapping(value = "/{id}", consumes = "application/json")
     public ApiResponse<UserDTO> update(@PathVariable Long id,
                                         @RequestBody UserDTO dto,
-                                        Authentication auth) {
+                                        Authentication auth,
+                                        javax.servlet.http.HttpServletRequest request) {
         User user = userRepository.findById(id)
                 .orElse(null);
         if (user == null) {
@@ -118,7 +121,8 @@ public class UserController {
         }
         userRepository.save(user);
 
-        operationLogService.log(auth.getName(), "USER_UPDATE",
+        operationLogService.log(auth.getName(), com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "USER_UPDATE",
                 (dto.isEnabled() ? "启用" : "封禁") + "管理员: " + user.getUsername(),
                 "SUCCESS", null);
         log.info("✅ 管理员 {} 更新了用户 {}: enabled={}", auth.getName(), user.getUsername(), dto.isEnabled());
@@ -133,7 +137,8 @@ public class UserController {
     @PutMapping(value = "/{id}/password", consumes = "application/json")
     public ApiResponse<Object> resetPassword(@PathVariable Long id,
                                             @RequestBody UserDTO dto,
-                                            Authentication auth) {
+                                            Authentication auth,
+                                            javax.servlet.http.HttpServletRequest request) {
         String newPassword = dto.getPassword();
         if (newPassword == null || newPassword.length() < 6) {
             return ApiResponse.badRequest("密码至少 6 位");
@@ -147,7 +152,8 @@ public class UserController {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        operationLogService.log(auth.getName(), "USER_PASSWORD",
+        operationLogService.log(auth.getName(), com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "USER_PASSWORD",
                 "重置密码: " + user.getUsername(), "SUCCESS", null);
         log.info("✅ 管理员 {} 重置了 {} 的密码", auth.getName(), user.getUsername());
 
@@ -159,7 +165,8 @@ public class UserController {
     // ========================================
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Object> delete(@PathVariable Long id, Authentication auth) {
+    public ApiResponse<Object> delete(@PathVariable Long id, Authentication auth,
+                                        javax.servlet.http.HttpServletRequest request) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ApiResponse.badRequest("用户不存在");
@@ -177,7 +184,8 @@ public class UserController {
 
         userRepository.delete(user);
 
-        operationLogService.log(auth.getName(), "USER_DELETE",
+        operationLogService.log(auth.getName(), com.alibaba.work.faas.util.ClientIpUtil.resolve(request),
+                "USER_DELETE",
                 "删除管理员: " + user.getUsername(), "SUCCESS", null);
         log.info("✅ 管理员 {} 删除了用户: {}", auth.getName(), user.getUsername());
 

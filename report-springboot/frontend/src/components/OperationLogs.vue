@@ -57,14 +57,31 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="logs" border stripe style="width:100%;" size="small" v-loading="loading" :max-height="480">
-      <el-table-column label="时间" width="160">
+    <!-- 报表统计：操作类型分布 + 按天趋势 -->
+    <div style="display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:280px; background:#fafafa; border:1px solid #ebeef5; border-radius:8px; padding:8px;">
+        <div style="font-size:13px; color:#606266; padding:4px 8px;">操作类型分布（近 30 天）</div>
+        <v-chart class="chart" :option="actionChartOption" autoresize style="height:220px;" />
+      </div>
+      <div style="flex:1.4; min-width:320px; background:#fafafa; border:1px solid #ebeef5; border-radius:8px; padding:8px;">
+        <div style="font-size:13px; color:#606266; padding:4px 8px;">操作趋势（近 30 天）</div>
+        <v-chart class="chart" :option="trendChartOption" autoresize style="height:220px;" />
+      </div>
+    </div>
+
+    <el-table :data="logs" border stripe style="width:100%;" size="small" v-loading="loading" :max-height="440">
+      <el-table-column label="时间" width="150">
         <template #default="{ row }">
           {{ formatTime(row.createdAt) }}
         </template>
       </el-table-column>
       <el-table-column label="操作人" width="90">
         <template #default="{ row }">{{ row.operator }}</template>
+      </el-table-column>
+      <el-table-column label="IP" width="120">
+        <template #default="{ row }">
+          <span style="font-family:monospace; font-size:12px;">{{ row.ipAddress || '-' }}</span>
+        </template>
       </el-table-column>
       <el-table-column label="操作类型" width="130">
         <template #default="{ row }">
@@ -102,10 +119,17 @@
 
 <script>
 import { List, Refresh, Search, Delete } from '@element-plus/icons-vue'
+import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { BarChart, LineChart, PieChart } from 'echarts/charts'
+import { TooltipComponent, GridComponent, LegendComponent } from 'echarts/components'
 import { apiGet } from '../utils/api.js'
 
+use([CanvasRenderer, BarChart, LineChart, PieChart, TooltipComponent, GridComponent, LegendComponent])
+
 export default {
-  components: { List, Refresh, Search, Delete },
+  components: { List, Refresh, Search, Delete, VChart },
   data() {
     return {
       logs: [],
@@ -118,10 +142,12 @@ export default {
         action: '',
         result: '',
         dateRange: null
-      }
+      },
+      actionChartOption: {},
+      trendChartOption: {}
     }
   },
-  mounted() { this.loadLogs() },
+  mounted() { this.loadLogs(); this.loadStats() },
   methods: {
     buildQuery() {
       const params = new URLSearchParams()
@@ -153,9 +179,63 @@ export default {
       } catch {}
       this.loading = false
     },
+    async loadStats() {
+      try {
+        const d = await apiGet('/api/admin/operations/stats', { noRedirect: true })
+        const actionStats = d.actionStats || []
+        const dayStats = d.dayStats || []
+
+        // 操作类型分布（柱状图）
+        this.actionChartOption = {
+          tooltip: { trigger: 'axis' },
+          grid: { left: 40, right: 16, top: 20, bottom: 24 },
+          xAxis: {
+            type: 'category',
+            data: actionStats.map(x => this.actionLabel(String(x.action))),
+            axisLabel: { color: '#909399', fontSize: 11, interval: 0, rotate: actionStats.length > 5 ? 30 : 0 }
+          },
+          yAxis: { type: 'value', axisLabel: { color: '#909399', fontSize: 11 }, splitLine: { lineStyle: { color: '#f0f2f5', type: 'dashed' } } },
+          series: [{
+            type: 'bar',
+            data: actionStats.map(x => Number(x.cnt)),
+            barMaxWidth: 28,
+            itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+          }]
+        }
+
+        // 按天趋势（折线图）
+        this.trendChartOption = {
+          tooltip: { trigger: 'axis' },
+          grid: { left: 40, right: 16, top: 20, bottom: 24 },
+          xAxis: {
+            type: 'category',
+            data: dayStats.map(x => String(x.day).slice(5)),
+            boundaryGap: false,
+            axisLabel: { color: '#909399', fontSize: 11 }
+          },
+          yAxis: { type: 'value', axisLabel: { color: '#909399', fontSize: 11 }, splitLine: { lineStyle: { color: '#f0f2f5', type: 'dashed' } } },
+          series: [{
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 5,
+            data: dayStats.map(x => Number(x.cnt)),
+            lineStyle: { color: '#10b981', width: 2 },
+            itemStyle: { color: '#10b981' },
+            areaStyle: {
+              color: {
+                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [{ offset: 0, color: 'rgba(16,185,129,0.35)' }, { offset: 1, color: 'rgba(16,185,129,0)' }]
+              }
+            }
+          }]
+        }
+      } catch {}
+    },
     resetFilters() {
       this.filters = { operator: '', action: '', result: '', dateRange: null }
       this.loadLogs()
+      this.loadStats()
     },
     formatTime(t) {
       if (!t) return '-'
@@ -163,9 +243,10 @@ export default {
     },
     tagType(action) {
       if (action === 'LOGIN' || action === 'LOGIN_FAIL') return ''
-      if (action === 'SCHEDULE_UPDATE') return 'warning'
+      if (action === 'SCHEDULE_UPDATE' || action === 'SCHEDULE_CREATE' || action === 'SCHEDULE_DELETE') return 'warning'
       if (action === 'SCHEDULE_TOGGLE') return 'info'
-      if (action === 'REPORT_GEN') return 'success'
+      if (action === 'REPORT_GEN' || action === 'REPORT_MANUAL') return 'success'
+      if (action && action.startsWith('USER_')) return 'primary'
       return ''
     },
     actionLabel(action) {
@@ -173,8 +254,15 @@ export default {
         LOGIN: '登录成功',
         LOGIN_FAIL: '登录失败',
         SCHEDULE_UPDATE: '更新 Cron',
+        SCHEDULE_CREATE: '新增任务',
+        SCHEDULE_DELETE: '删除任务',
         SCHEDULE_TOGGLE: '启停任务',
         REPORT_GEN: '生成报告',
+        REPORT_MANUAL: '手动生成',
+        USER_CREATE: '新增用户',
+        USER_UPDATE: '更新用户',
+        USER_PASSWORD: '重置密码',
+        USER_DELETE: '删除用户',
         ERROR: '系统错误'
       }
       return map[action] || action

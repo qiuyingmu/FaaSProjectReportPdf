@@ -25,6 +25,10 @@ public class OperationLog {
     @Column(length = 50)
     private String operator;
 
+    /** 操作来源 IP（经 X-Forwarded-For 解析） */
+    @Column(name = "ip_address", length = 64)
+    private String ipAddress;
+
     /** 操作类型（LOGIN / REPORT_GEN / SCHEDULE_UPDATE / EXPORT / ERROR） */
     @Column(length = 50, nullable = false)
     private String action;
@@ -47,7 +51,13 @@ public class OperationLog {
     public OperationLog() {}
 
     public OperationLog(String operator, String action, String detail, String result, Long durationMs) {
+        this(operator, null, action, detail, result, durationMs);
+    }
+
+    public OperationLog(String operator, String ipAddress, String action, String detail,
+                        String result, Long durationMs) {
         this.operator = operator;
+        this.ipAddress = ipAddress;
         this.action = action;
         this.detail = detail;
         this.result = result;
@@ -58,6 +68,8 @@ public class OperationLog {
     public void setId(Long id) { this.id = id; }
     public String getOperator() { return operator; }
     public void setOperator(String operator) { this.operator = operator; }
+    public String getIpAddress() { return ipAddress; }
+    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }
     public String getDetail() { return detail; }

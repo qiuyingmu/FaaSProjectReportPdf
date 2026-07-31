@@ -142,7 +142,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     .ifPresent(u -> { u.setLastLogin(LocalDateTime.now()); userRepository.save(u); });
 
             // 记录操作日志
-            operationLogService.log(authentication.getName(), "LOGIN",
+            operationLogService.log(authentication.getName(), getClientIp(request), "LOGIN",
                     "登录成功", "SUCCESS", null);
 
             Map<String, Object> result = new LinkedHashMap<>();
@@ -209,7 +209,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         // 记录审计日志
         operationLogService.log(username != null ? username : "unknown",
-                "LOGIN_FAIL", "IP: " + ip + " 第" + (attempt != null ? attempt.count : 0) + "次失败",
+                ip, "LOGIN_FAIL", "IP: " + ip + " 第" + (attempt != null ? attempt.count : 0) + "次失败",
                 blocked ? "BLOCKED" : "FAILURE", null);
 
         if (blocked) {

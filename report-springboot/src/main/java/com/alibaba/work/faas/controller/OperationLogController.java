@@ -53,4 +53,19 @@ public class OperationLogController {
         resultMap.put("logs", p.getContent());
         return resultMap;
     }
+
+    /**
+     * 操作日志报表统计（按操作类型 + 按天趋势）。
+     *
+     * @param startDate 起始时间（ISO，如 2026-07-01T00:00:00）
+     * @param endDate   截止时间（ISO，如 2026-07-31T23:59:59）
+     */
+    @GetMapping("/stats")
+    public Map<String, Object> stats(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime endDate) {
+        LocalDateTime start = startDate != null ? startDate : LocalDateTime.now().minusDays(30);
+        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+        return operationLogService.stats(start, end);
+    }
 }
