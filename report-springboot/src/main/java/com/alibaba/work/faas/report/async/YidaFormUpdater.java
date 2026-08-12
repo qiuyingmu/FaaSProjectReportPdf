@@ -158,11 +158,11 @@ public class YidaFormUpdater {
                         : "report.pdf";
 
                 JSONObject fileObj = new JSONObject();
-                // downloadUrl = CDN 下载地址（obsdigitalpdfcdn.jgjl.cn）；previewUrl/url = 预览地址
+                // 宜搭附件对象规范：downloadUrl/url = 下载地址（CDN）；previewUrl = 预览地址
                 fileObj.put("downloadUrl", downloadUrl != null ? downloadUrl : previewUrl);
                 fileObj.put("name", fileName);
                 fileObj.put("previewUrl", previewUrl);
-                fileObj.put("url", previewUrl);
+                fileObj.put("url", downloadUrl != null ? downloadUrl : previewUrl);
                 fileObj.put("ext", "pdf");
                 attachmentList.add(fileObj);
             }
