@@ -45,6 +45,8 @@ public final class ObsReportUtil {
 
     private static final String ENDPOINT = "obs.cn-southwest-2.myhuaweicloud.com";
     private static final String CUSTOM_DOMAIN = "obsdigitalpdf.jgjl.cn";
+    /** CDN 域名（绑定了 CDN 加速，用于下载地址） */
+    private static final String CDN_DOMAIN = "obsdigitalpdfcdn.jgjl.cn";
 
     private static final Logger log = LoggerFactory.getLogger(ObsReportUtil.class);
 
@@ -177,7 +179,7 @@ public final class ObsReportUtil {
 
         // 构建 URL
         String previewUrl = String.format("https://%s/%s", CUSTOM_DOMAIN, objectName);
-        String downloadUrl = String.format("https://%s.%s/%s", bucketName, ENDPOINT, objectName);
+        String downloadUrl = String.format("https://%s/%s", CDN_DOMAIN, objectName);
 
         log.info("上传成功: {} ({} bytes)", objectName, pdfBytes.length);
         log.debug("预览URL: {}", previewUrl); // debug level 避免日志中暴露完整 URL
