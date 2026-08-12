@@ -150,17 +150,19 @@ public class YidaFormUpdater {
         JSONArray attachmentList = new JSONArray();
         if (obsFiles != null) {
             for (Map<String, String> obs : obsFiles) {
-                String url = obs.get("previewUrl");
+                String previewUrl = obs.get("previewUrl");
+                String downloadUrl = obs.get("downloadUrl");
                 String objectName = obs.get("objectName");
                 String fileName = (objectName != null)
                         ? objectName.substring(objectName.lastIndexOf('/') + 1)
                         : "report.pdf";
 
                 JSONObject fileObj = new JSONObject();
-                fileObj.put("downloadUrl", url);
+                // downloadUrl = CDN 下载地址（obsdigitalpdfcdn.jgjl.cn）；previewUrl/url = 预览地址
+                fileObj.put("downloadUrl", downloadUrl != null ? downloadUrl : previewUrl);
                 fileObj.put("name", fileName);
-                fileObj.put("previewUrl", url);
-                fileObj.put("url", url);
+                fileObj.put("previewUrl", previewUrl);
+                fileObj.put("url", previewUrl);
                 fileObj.put("ext", "pdf");
                 attachmentList.add(fileObj);
             }
@@ -178,8 +180,9 @@ public class YidaFormUpdater {
             if (obsFiles != null && !obsFiles.isEmpty()) {
                 remark.append("\nPDF下载链接：\n");
                 for (int i = 0; i < obsFiles.size(); i++) {
+                    String dl = obsFiles.get(i).get("downloadUrl");
                     remark.append("  ").append(i + 1).append(". ")
-                          .append(obsFiles.get(i).get("previewUrl")).append("\n");
+                          .append(dl != null ? dl : obsFiles.get(i).get("previewUrl")).append("\n");
                 }
             }
         } else {
